@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Sora:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --color-void: #0A1628;
+  --color-deep-ops: #0D2137;
+  --color-control: #0E3A5C;
+  --color-critical: #0B4F82;
+  --color-grid: #0077B6;
+  --color-signal: #00A8CC;
+  --color-verify: #00C9A7;
+  --color-clear: #00E5B0;
+  --color-warning: #F6A623;
+  --color-error: #E53E3E;
+  --color-text-primary: #0F1B2D;
+  --color-text-secondary: #4A5568;
+  --color-surface-muted: #EDF2F7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  background-color: var(--color-void);
+  color: #ffffff;
+  margin: 0;
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, #0A1628 0%, #0D2137 15%, #0E3A5C 30%, #0B4F82 45%, #0077B6 60%, #00A8CC 75%, #00C9A7 90%, #00E5B0 100%);
+}
+
+.brand-gradient-text {
+  background: linear-gradient(135deg, #00A8CC 0%, #00C9A7 50%, #00E5B0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.font-display {
+  font-family: 'Sora', system-ui, sans-serif;
+}
+
+.font-mono-cip {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes border-beam {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-warning {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(246, 166, 35, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(246, 166, 35, 0.2); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s ease-out forwards;
+}
+
+.animate-pulse-warning {
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.gap-card {
+  border: 1px solid rgba(246, 166, 35, 0.3);
+}
+
+.cta-btn {
+  background: var(--color-verify);
+  color: var(--color-void);
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  transition: background 150ms ease-out, transform 100ms ease-out;
+}
+
+.cta-btn:hover {
+  background: var(--color-clear);
+  transform: translateY(-1px);
+}
+
+.secondary-btn {
+  border: 1.5px solid var(--color-signal);
+  color: var(--color-signal);
+  background: transparent;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  transition: border-color 150ms ease-out, color 150ms ease-out, background 150ms ease-out;
+}
+
+.secondary-btn:hover {
+  background: rgba(0, 168, 204, 0.08);
+  color: var(--color-clear);
+  border-color: var(--color-clear);
+}
+
+.feature-card {
+  background: rgba(13, 33, 55, 0.8);
+  border: 1px solid rgba(0, 168, 204, 0.15);
+  transition: border-color 200ms ease-in-out, transform 200ms ease-out;
+}
+
+.feature-card:hover {
+  border-color: rgba(0, 201, 167, 0.4);
+  transform: translateY(-2px);
+}
+
+.pricing-card {
+  background: rgba(14, 58, 92, 0.4);
+  border: 1px solid rgba(0, 168, 204, 0.2);
+  transition: border-color 200ms ease-in-out;
+}
+
+.pricing-card.popular {
+  border-color: var(--color-verify);
+  background: rgba(0, 201, 167, 0.06);
+}
+
+.stat-card {
+  background: rgba(11, 79, 130, 0.3);
+  border: 1px solid rgba(0, 168, 204, 0.2);
+}
+
+.testimonial-card {
+  background: rgba(13, 33, 55, 0.9);
+  border-left: 3px solid var(--color-verify);
+}
+
+.nav-link {
+  color: rgba(255,255,255,0.7);
+  transition: color 150ms;
+}
+
+.nav-link:hover {
+  color: var(--color-signal);
+}
+
+.requirement-id {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--color-signal);
+  font-size: 0.8rem;
+}
