@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useAuth } from './context/AuthContext'
+import AuthModal from './components/AuthModal'
+import Dashboard from './Dashboard'
 
 // ─── NAV ────────────────────────────────────────────────────────────────────
-function Nav() {
-  const [menuOpen, setMenuOpen] = useState(false)
+function Nav({ onAuth }) {
   return (
     <nav style={{ background: 'rgba(10,22,40,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,168,204,0.15)', position: 'sticky', top: 0, zIndex: 50 }}>
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
@@ -24,8 +26,8 @@ function Nav() {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <a href="#" className="secondary-btn" style={{ padding: '0.5rem 1.125rem', borderRadius: 6, fontSize: '0.875rem', textDecoration: 'none' }}>Log In</a>
-          <a href="#" className="cta-btn" style={{ padding: '0.5rem 1.25rem', borderRadius: 6, fontSize: '0.875rem', textDecoration: 'none' }}>Schedule a Demo</a>
+          <button onClick={() => onAuth('signin')} className="secondary-btn" style={{ padding: '0.5rem 1.125rem', borderRadius: 6, fontSize: '0.875rem', cursor: 'pointer' }}>Log In</button>
+          <button onClick={() => onAuth('signup')} className="cta-btn" style={{ padding: '0.5rem 1.25rem', borderRadius: 6, fontSize: '0.875rem', cursor: 'pointer', border: 'none' }}>Get Started</button>
         </div>
       </div>
     </nav>
@@ -33,7 +35,7 @@ function Nav() {
 }
 
 // ─── HERO ───────────────────────────────────────────────────────────────────
-function Hero() {
+function Hero({ onAuth }) {
   return (
     <section style={{ position: 'relative', overflow: 'hidden', padding: '5rem 1.5rem 6rem' }}>
       {/* Background gradient glow */}
@@ -56,11 +58,11 @@ function Hero() {
         </p>
 
         <div style={{ display: 'flex', gap: '0.875rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-          <a href="#" className="cta-btn" style={{ padding: '0.875rem 2rem', borderRadius: 8, fontSize: '1rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-            Schedule a Demo
+          <button onClick={() => onAuth('signup')} className="cta-btn" style={{ padding: '0.875rem 2rem', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+            Get Started Free
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </a>
-          <a href="#" className="secondary-btn" style={{ padding: '0.875rem 2rem', borderRadius: 8, fontSize: '1rem', textDecoration: 'none' }}>See How It Works</a>
+          </button>
+          <button onClick={() => onAuth('signin')} className="secondary-btn" style={{ padding: '0.875rem 2rem', borderRadius: 8, fontSize: '1rem', cursor: 'pointer' }}>Log In</button>
         </div>
 
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)' }}>
@@ -464,7 +466,7 @@ function SocialProof() {
 }
 
 // ─── PRICING ─────────────────────────────────────────────────────────────────
-function Pricing() {
+function Pricing({ onAuth }) {
   const [annual, setAnnual] = useState(false)
 
   const plans = [
@@ -580,9 +582,9 @@ function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <a href="#" className={p.popular ? 'cta-btn' : 'secondary-btn'} style={{ textAlign: 'center', padding: '0.75rem', borderRadius: 8, fontSize: '0.9375rem', textDecoration: 'none', display: 'block', fontWeight: 700 }}>
+                <button onClick={() => onAuth('signup')} className={p.popular ? 'cta-btn' : 'secondary-btn'} style={{ textAlign: 'center', padding: '0.75rem', borderRadius: 8, fontSize: '0.9375rem', display: 'block', width: '100%', fontWeight: 700, cursor: 'pointer', border: p.popular ? 'none' : undefined }}>
                   {p.cta}
-                </a>
+                </button>
               </div>
             )
           })}
@@ -601,7 +603,7 @@ function Pricing() {
 }
 
 // ─── FINAL CTA ────────────────────────────────────────────────────────────────
-function FinalCTA() {
+function FinalCTA({ onAuth }) {
   return (
     <section style={{ padding: '5rem 1.5rem', borderTop: '1px solid rgba(0,168,204,0.1)' }}>
       <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
@@ -615,8 +617,8 @@ function FinalCTA() {
           Join 200+ NERC CIP compliance teams who have built programs that don't depend on one person being in every room.
         </p>
         <div style={{ display: 'flex', gap: '0.875rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a href="#" className="cta-btn" style={{ padding: '1rem 2.25rem', borderRadius: 8, fontSize: '1rem', textDecoration: 'none' }}>Schedule a Demo →</a>
-          <a href="#" className="secondary-btn" style={{ padding: '1rem 2.25rem', borderRadius: 8, fontSize: '1rem', textDecoration: 'none' }}>Start Free Trial</a>
+          <button onClick={() => onAuth('signup')} className="cta-btn" style={{ padding: '1rem 2.25rem', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', border: 'none' }}>Get Started Free →</button>
+          <button onClick={() => onAuth('signin')} className="secondary-btn" style={{ padding: '1rem 2.25rem', borderRadius: 8, fontSize: '1rem', cursor: 'pointer' }}>Log In</button>
         </div>
       </div>
     </section>
@@ -651,20 +653,47 @@ function Footer() {
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  const { user, loading } = useAuth()
+  const [authOpen, setAuthOpen] = useState(false)
+  const [authMode, setAuthMode] = useState('signin')
+
+  const openAuth = (mode = 'signin') => {
+    setAuthMode(mode)
+    setAuthOpen(true)
+  }
+
+  // Avoid a flash of the landing page before the session is hydrated
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+        Loading…
+      </div>
+    )
+  }
+
+  // Signed in → the gated NERC CIP connector workspace
+  if (user) {
+    return <Dashboard />
+  }
+
+  // Signed out → public landing page, with auth gated behind the modal
   return (
     <>
-      <Nav />
+      <Nav onAuth={openAuth} />
       <main>
-        <Hero />
+        <Hero onAuth={openAuth} />
         <Pain />
         <Solution />
         <Features />
         <ROICalculator />
         <SocialProof />
-        <Pricing />
-        <FinalCTA />
+        <Pricing onAuth={openAuth} />
+        <FinalCTA onAuth={openAuth} />
       </main>
       <Footer />
+      {authOpen && (
+        <AuthModal open onClose={() => setAuthOpen(false)} initialMode={authMode} />
+      )}
     </>
   )
 }
