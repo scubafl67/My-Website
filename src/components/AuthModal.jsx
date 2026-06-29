@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 // Cloudflare Turnstile site key (public). Defaults to Cloudflare's always-pass
 // TEST key so dev works out of the box; set VITE_TURNSTILE_SITE_KEY for production.
 const TURNSTILE_SITE_KEY =
-  import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'
+  import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAADs4Dl2e3QRsssGc'
 
 // Auth modal with three modes: sign in, sign up, and two-secret password reset.
 // Gates all NERC CIP content behind a CIPGuard account.
