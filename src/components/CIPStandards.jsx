@@ -10,6 +10,24 @@ const STATUS_META = {
 
 const FILTERS = ['All', CIP_STATUS.MANDATORY, CIP_STATUS.NEAR_TERM, CIP_STATUS.FUTURE]
 
+// The official standard text is stored under this URL per standard id.
+const docUrlFor = (id) =>
+  `https://www.nerc.com/pa/Stand/Pages/ReliabilityStandardsUnitedStates.aspx?std=${id}`
+
+// Pull the language for a single requirement (e.g. "R1") out of the full
+// standard text: from "R1." up to the next requirement (R2.) or its measure (M1.).
+function extractRequirement(text, label) {
+  if (!text) return null
+  const n = label.replace(/[^0-9]/g, '')
+  const start = new RegExp(`(?:^|\\n)\\s*R${n}\\.`).exec(text)
+  if (!start) return null
+  const from = start.index + (start[0].startsWith('\n') ? 1 : 0)
+  const rest = text.slice(from + 2)
+  const end = /\n\s*(?:R\d+\.|M\d+\.)/.exec(rest)
+  const body = text.slice(from, end ? from + 2 + end.index : text.length).trim()
+  return body.length > 10 ? body : null
+}
+
 export default function CIPStandards() {
   const [standards, setStandards] = useState([])
   const [tier, setTier] = useState('general')
@@ -17,16 +35,16 @@ export default function CIPStandards() {
   const [loadError, setLoadError] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
+  // Requirement modal: { standard, label, loading, text, error }
+  const [reqModal, setReqModal] = useState(null)
 
-  // Pull the catalog from Supabase. RLS serves general users only the current
-  // (mandatory) standards; full/super_admin users get the entire catalog.
   useEffect(() => {
     let active = true
     async function load() {
       const [{ data, error }, { data: prof }] = await Promise.all([
         supabase
           .from('cip_standards')
-          .select('id, title, description, effective_date, inactive_date, requirements, status, note')
+          .select('id, title, description, effective_date, inactive_date, requirements, status, note, nerc_url, technical_rationale_url')
           .order('sort_order', { ascending: true }),
         supabase.from('profiles').select('access_level').maybeSingle(),
       ])
@@ -52,6 +70,23 @@ export default function CIPStandards() {
       )
     })
   }, [standards, search, filter])
+
+  const openRequirement = async (standard, label) => {
+    setReqModal({ standard, label, loading: true, text: '', error: '' })
+    const { data, error } = await supabase
+      .from('nerc_documents').select('content').eq('url', docUrlFor(standard.id)).maybeSingle()
+    if (error || !data?.content) {
+      setReqModal({ standard, label, loading: false, text: '', error: 'Requirement text isn’t available in the library yet.' })
+      return
+    }
+    const body = extractRequirement(data.content, label)
+    setReqModal({
+      standard, label, loading: false,
+      text: body || '', error: body ? '' : 'Couldn’t locate that requirement in the standard text.',
+    })
+  }
+
+  const linkStyle = { fontSize: '0.7rem', color: 'var(--color-signal)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }
 
   return (
     <div>
@@ -112,7 +147,12 @@ export default function CIPStandards() {
               return (
                 <div key={s.id} style={{ background: 'rgba(13,33,55,0.8)', border: '1px solid rgba(0,168,204,0.15)', borderRadius: 12, padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.5rem', gap: '0.5rem' }}>
-                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-clear)' }}>{s.id}</span>
+                    {/* Tile id links to the official NERC standard PDF */}
+                    {s.nerc_url ? (
+                      <a href={s.nerc_url} target="_blank" rel="noreferrer" style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-clear)', textDecoration: 'none' }} title="Open the official NERC standard (PDF)">{s.id} ↗</a>
+                    ) : (
+                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-clear)' }}>{s.id}</span>
+                    )}
                     <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: meta.color, background: `${meta.color}1a`, border: `1px solid ${meta.color}40`, borderRadius: 100, padding: '0.2rem 0.55rem', whiteSpace: 'nowrap' }}>{meta.label}</span>
                   </div>
                   <h3 style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#fff', margin: '0 0 0.5rem' }}>{s.title}</h3>
@@ -120,12 +160,24 @@ export default function CIPStandards() {
                   {s.note && (
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-warning)', fontStyle: 'italic', margin: '0 0 0.75rem' }}>{s.note}</p>
                   )}
+
+                  {/* Document links */}
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                    {s.nerc_url && <a href={s.nerc_url} target="_blank" rel="noreferrer" style={linkStyle}>📄 Standard (NERC.com)</a>}
+                    {s.technical_rationale_url && <a href={s.technical_rationale_url} target="_blank" rel="noreferrer" style={linkStyle}>📐 Technical Rationale</a>}
+                  </div>
+
                   <div style={{ borderTop: '1px solid rgba(0,168,204,0.12)', paddingTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.375rem 1rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
                     <span>📅 Effective {s.effective_date}</span>
                     {s.inactive_date && <span>⏳ Inactive {s.inactive_date}</span>}
-                    <span style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
                       {(s.requirements || []).map((r) => (
-                        <span key={r} style={{ fontFamily: 'JetBrains Mono, monospace', background: 'rgba(0,168,204,0.1)', borderRadius: 4, padding: '0.05rem 0.35rem', color: 'rgba(255,255,255,0.7)' }}>{r}</span>
+                        <button
+                          key={r}
+                          onClick={() => openRequirement(s, r)}
+                          title={`View ${s.id} ${r} requirement language`}
+                          style={{ fontFamily: 'JetBrains Mono, monospace', background: 'rgba(0,168,204,0.12)', border: '1px solid rgba(0,168,204,0.3)', borderRadius: 4, padding: '0.05rem 0.4rem', color: 'var(--color-signal)', cursor: 'pointer', fontSize: '0.75rem' }}
+                        >{r}</button>
                       ))}
                     </span>
                   </div>
@@ -138,6 +190,42 @@ export default function CIPStandards() {
             <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: '3rem 0' }}>No standards match your search.</div>
           )}
         </>
+      )}
+
+      {/* Requirement language modal */}
+      {reqModal && (
+        <div
+          onClick={() => setReqModal(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(5,12,22,0.8)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 720, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, rgba(13,33,55,0.99), rgba(10,22,40,0.99))', border: '1px solid rgba(0,168,204,0.3)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,0.55)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(0,168,204,0.15)' }}>
+              <div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-clear)', fontSize: '0.875rem' }}>{reqModal.standard.id} · {reqModal.label}</div>
+                <div style={{ color: '#fff', fontWeight: 600, fontSize: '1rem', marginTop: '0.125rem' }}>{reqModal.standard.title}</div>
+              </div>
+              <button onClick={() => setReqModal(null)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto' }}>
+              {reqModal.loading ? (
+                <div style={{ color: 'rgba(255,255,255,0.5)' }}>Loading requirement language…</div>
+              ) : reqModal.error ? (
+                <div style={{ color: '#F6A6A6', fontSize: '0.875rem' }}>{reqModal.error}</div>
+              ) : (
+                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{reqModal.text}</pre>
+              )}
+            </div>
+            <div style={{ padding: '0.875rem 1.5rem', borderTop: '1px solid rgba(0,168,204,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>Excerpted from the official standard text. Verify against the source PDF.</span>
+              {reqModal.standard.nerc_url && (
+                <a href={reqModal.standard.nerc_url} target="_blank" rel="noreferrer" className="secondary-btn" style={{ padding: '0.4rem 0.9rem', borderRadius: 8, fontSize: '0.8125rem', textDecoration: 'none', whiteSpace: 'nowrap' }}>Open full standard ↗</a>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
