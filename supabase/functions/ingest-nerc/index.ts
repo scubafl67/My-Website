@@ -1,8 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
-// Super-admin NERC ingestion: scrape a source with Firecrawl, store the raw doc,
-// then chunk it and embed each chunk with Supabase's free built-in gte-small model.
+// Super-admin NERC ingestion (v3): scrape with Firecrawl and store the document +
+// chunks INSTANTLY with embedding = NULL. The memory-heavy embedding is done
+// separately by the `embed-pending` background worker (pg_cron). This avoids the
+// gte-small WORKER_RESOURCE_LIMIT that killed inline embedding on larger pages.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +27,7 @@ function chunkText(md: string, maxLen = 1500): string[] {
     if (next.length > maxLen && cur) { out.push(cur.trim()); cur = p } else { cur = next }
   }
   if (cur.trim()) out.push(cur.trim())
-  return out.filter((c) => c.length > 40).slice(0, 60)  // cap per ingest
+  return out.filter((c) => c.length > 40).slice(0, 200)
 }
 
 Deno.serve(async (req) => {
@@ -76,26 +78,19 @@ Deno.serve(async (req) => {
   }, { onConflict: "url" }).select("id").single()
   if (upErr || !docRow) return json(500, { error: upErr?.message ?? "Document upsert failed" })
 
-  // Re-chunk: drop old chunks for this doc, then embed fresh
+  // Store chunks WITHOUT embeddings; embed-pending fills them in shortly.
   await admin.from("nerc_chunks").delete().eq("document_id", docRow.id)
   const chunks = chunkText(markdown)
-
-  // @ts-ignore Supabase global is available in the edge runtime
-  const model = new Supabase.ai.Session("gte-small")
-  const rows: Record<string, unknown>[] = []
-  for (let i = 0; i < chunks.length; i++) {
-    const emb = await model.run(chunks[i], { mean_pool: true, normalize: true }) as number[]
-    rows.push({
-      document_id: docRow.id, source_id: sourceId, url: targetUrl, title,
-      chunk_index: i, content: chunks[i], embedding: JSON.stringify(emb),
-    })
-  }
-  if (rows.length) {
-    const { error: cErr } = await admin.from("nerc_chunks").insert(rows)
+  const rows = chunks.map((content, i) => ({
+    document_id: docRow.id, source_id: sourceId, url: targetUrl, title,
+    chunk_index: i, content, embedding: null,
+  }))
+  for (let i = 0; i < rows.length; i += 100) {
+    const { error: cErr } = await admin.from("nerc_chunks").insert(rows.slice(i, i + 100))
     if (cErr) return json(500, { error: `Chunk insert failed: ${cErr.message}` })
   }
 
   if (sourceId) await admin.from("nerc_sources").update({ last_crawled_at: new Date().toISOString() }).eq("id", sourceId)
 
-  return json(200, { success: true, url: targetUrl, title, chars: markdown.length, chunks: rows.length })
+  return json(200, { success: true, url: targetUrl, title, chars: markdown.length, chunks: rows.length, note: "Embedding in background; searchable within a few minutes." })
 })
