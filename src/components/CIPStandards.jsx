@@ -20,7 +20,7 @@ const docUrlFor = (id) =>
 function normalizeSpacing(text) {
   if (!text) return text
   return text
-    .replace(/\n([ \t]+\n)+/g, ' ')
+    .replace(/\n([ \t\u00A0]+\n)+/g, ' ')
     .replace(/\n([.,;])/g, '$1')
     .replace(/\n\u2010\n/g, '-')
 }
