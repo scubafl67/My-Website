@@ -47,9 +47,11 @@ function parseSubRequirements(text, reqNum) {
   if (!text) return { intro: '', subs: [] }
   const n = reqNum.replace(/[^0-9]/g, '')
 
-  // Match only N.N (one level deep), not N.N.N
+  // Match only N.N (one level deep), not N.N.N.
+  // Allow a newline after the part number to handle table cells where content
+  // starts on the next line (CIP-006-7.1, CIP-010-5 style blank-line cells).
   const subPattern = new RegExp(
-    `(?:^|\\n)[ \\t]*(${n}\\.\\d+)[ \\t]*[.:]?[ \\t]+`,
+    `(?:^|\\n)[ \\t]*(${n}\\.\\d+)[ \\t]*[.:]?(?:[ \\t]+|\\n)`,
     'g'
   )
   const matches = []
@@ -64,15 +66,17 @@ function parseSubRequirements(text, reqNum) {
   const mnIdx = intro.search(new RegExp(`\\nM${n}\\.`))
   if (mnIdx > 0) intro = intro.slice(0, mnIdx)
   intro = intro
-    .replace(/\nPart\s+Applicable Systems\s+Requirements\s+Measures\s*/gi, '')
+    .replace(/\n\s*Part\s+Applicable Systems.+?(?:\n|$)/gi, '')
     .trim()
 
   const subs = matches.map((match, i) => {
     const contentStart = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
     const contentEnd = i + 1 < matches.length ? matches[i + 1].index : text.length
     let subText = text.slice(contentStart, contentEnd).trim()
-    // Strip "An example of evidence…" boilerplate (table-format standards)
-    const evidenceIdx = subText.search(/An example of evidence may include/i)
+    // Strip evidence boilerplate — handles both "An example of evidence may include"
+    // and "Examples of evidence may include" (used in CIP-005-8, CIP-007-7.1, CIP-008-7.1)
+    // and "Acceptable evidence includes" (used in CIP-002 style standards)
+    const evidenceIdx = subText.search(/\bexamples? of evidence\b|\bAcceptable evidence\b/i)
     if (evidenceIdx > 50) subText = subText.slice(0, evidenceIdx).trim()
     // Strip trailing M{n}. measures statement (non-table standards)
     const trailingMn = subText.search(new RegExp(`\\nM${n}\\.`))
