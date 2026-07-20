@@ -28,6 +28,36 @@ function extractRequirement(text, label) {
   return body.length > 10 ? body : null
 }
 
+// Parse a requirement block into { intro, subs } where subs is an array of
+// { id: '2.1', text: '...' } objects. Handles patterns like "2.1 ", "2.1. ",
+// and deeper parts like "2.1.1 ".
+function parseSubRequirements(text, reqNum) {
+  if (!text) return { intro: '', subs: [] }
+  const n = reqNum.replace(/[^0-9]/g, '')
+  // Match sub-requirement lines: optional whitespace, then n.1, n.2, n.1.1 etc.
+  const subPattern = new RegExp(
+    `(?:^|\\n)[ \\t]*(${n}\\.\\d+(?:\\.\\d+)*)[ \\t]*[.:]?[ \\t]+`,
+    'g'
+  )
+  const matches = []
+  let m
+  while ((m = subPattern.exec(text)) !== null) {
+    matches.push({ id: m[1], index: m.index === 0 ? 0 : m.index + 1, matchLen: m[0].length })
+  }
+  if (matches.length === 0) return { intro: text, subs: [] }
+
+  const intro = text.slice(0, matches[0].index).trim()
+  const subs = matches.map((match, i) => {
+    const contentStart = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
+    const contentEnd = i + 1 < matches.length ? matches[i + 1].index : text.length
+    return {
+      id: match.id,
+      text: text.slice(contentStart, contentEnd).trim(),
+    }
+  })
+  return { intro, subs }
+}
+
 export default function CIPStandards() {
   const [standards, setStandards] = useState([])
   const [tier, setTier] = useState('general')
@@ -214,9 +244,32 @@ export default function CIPStandards() {
                 <div style={{ color: 'rgba(255,255,255,0.5)' }}>Loading requirement language…</div>
               ) : reqModal.error ? (
                 <div style={{ color: '#F6A6A6', fontSize: '0.875rem' }}>{reqModal.error}</div>
-              ) : (
-                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{reqModal.text}</pre>
-              )}
+              ) : (() => {
+                const { intro, subs } = parseSubRequirements(reqModal.text, reqModal.label)
+                return (
+                  <div>
+                    {intro && (
+                      <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, margin: '0 0 1.25rem', whiteSpace: 'pre-wrap' }}>{intro}</p>
+                    )}
+                    {subs.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                        {subs.map((sub) => (
+                          <div
+                            key={sub.id}
+                            style={{ display: 'flex', gap: '0.875rem', background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.18)', borderRadius: 8, padding: '0.75rem 1rem' }}
+                          >
+                            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 36, paddingTop: '0.15rem' }}>{sub.id}</span>
+                            <span style={{ fontSize: '0.8375rem', color: 'rgba(255,255,255,0.82)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{sub.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      // No sub-requirements found — render the full text as-is
+                      <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{reqModal.text}</pre>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
             <div style={{ padding: '0.875rem 1.5rem', borderTop: '1px solid rgba(0,168,204,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>Excerpted from the official standard text. Verify against the source PDF.</span>
