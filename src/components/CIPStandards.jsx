@@ -14,29 +14,42 @@ const FILTERS = ['All', CIP_STATUS.MANDATORY, CIP_STATUS.NEAR_TERM, CIP_STATUS.F
 const docUrlFor = (id) =>
   `https://www.nerc.com/pa/Stand/Pages/ReliabilityStandardsUnitedStates.aspx?std=${id}`
 
-// Pull the language for a single requirement (e.g. "R1") out of the full
-// standard text: from "R1." up to the next requirement (R2.) or its measure (M1.).
+// Some PDFs are extracted with a space between every word/token (e.g. CIP-006-6).
+// Collapse that artifact so downstream parsing works uniformly.
+function normalizeSpacing(text) {
+  return text.replace(/\n \n/g, ' ').replace(/\n‐\n/g, '-')
+}
+
+// Pull the language for a single requirement (e.g. "R1") out of the full standard
+// text. Stops at the NEXT requirement header (R2., R3. …) — NOT at the measure
+// statement (M1.) — so that table-based standards (CIP-004 through CIP-011) include
+// their Part rows which appear after M1 in the document.
 function extractRequirement(text, label) {
   if (!text) return null
+  const src = normalizeSpacing(text)
   const n = label.replace(/[^0-9]/g, '')
-  const start = new RegExp(`(?:^|\\n)\\s*R${n}\\.`).exec(text)
+  // (?!\d) prevents "R1." from matching "R1.5" cross-references in background text
+  const start = new RegExp(`(?:^|\\n)\\s*R${n}\\.(?!\\d)`).exec(src)
   if (!start) return null
   const from = start.index + (start[0].startsWith('\n') ? 1 : 0)
-  const rest = text.slice(from + 2)
-  const end = /\n\s*(?:R\d+\.|M\d+\.)/.exec(rest)
-  const body = text.slice(from, end ? from + 2 + end.index : text.length).trim()
+  const rest = src.slice(from + 2)
+  // Stop at the next requirement header only (not at M1. which precedes table rows)
+  const end = /\n\s*R\d+\.(?!\d)/.exec(rest)
+  const body = src.slice(from, end ? from + 2 + end.index : src.length).trim()
   return body.length > 10 ? body : null
 }
 
-// Parse a requirement block into { intro, subs } where subs is an array of
-// { id: '2.1', text: '...' } objects. Handles patterns like "2.1 ", "2.1. ",
-// and deeper parts like "2.1.1 ".
+// Parse a requirement block into { intro, subs }.
+// subs is an array of { id: '2.1', text: '...' } objects.
+// Only matches TOP-LEVEL parts (N.N) — sub-sub-requirements (N.N.N) stay inside
+// the parent part's text so they aren't fragmented into separate rows.
 function parseSubRequirements(text, reqNum) {
   if (!text) return { intro: '', subs: [] }
   const n = reqNum.replace(/[^0-9]/g, '')
-  // Match sub-requirement lines: optional whitespace, then n.1, n.2, n.1.1 etc.
+
+  // Match only N.N (one level deep), not N.N.N
   const subPattern = new RegExp(
-    `(?:^|\\n)[ \\t]*(${n}\\.\\d+(?:\\.\\d+)*)[ \\t]*[.:]?[ \\t]+`,
+    `(?:^|\\n)[ \\t]*(${n}\\.\\d+)[ \\t]*[.:]?[ \\t]+`,
     'g'
   )
   const matches = []
@@ -46,14 +59,25 @@ function parseSubRequirements(text, reqNum) {
   }
   if (matches.length === 0) return { intro: text, subs: [] }
 
-  const intro = text.slice(0, matches[0].index).trim()
+  // Build intro: trim before the M{n}. measures statement and strip table header
+  let intro = text.slice(0, matches[0].index)
+  const mnIdx = intro.search(new RegExp(`\\nM${n}\\.`))
+  if (mnIdx > 0) intro = intro.slice(0, mnIdx)
+  intro = intro
+    .replace(/\nPart\s+Applicable Systems\s+Requirements\s+Measures\s*/gi, '')
+    .trim()
+
   const subs = matches.map((match, i) => {
     const contentStart = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
     const contentEnd = i + 1 < matches.length ? matches[i + 1].index : text.length
-    return {
-      id: match.id,
-      text: text.slice(contentStart, contentEnd).trim(),
-    }
+    let subText = text.slice(contentStart, contentEnd).trim()
+    // Strip "An example of evidence…" boilerplate (table-format standards)
+    const evidenceIdx = subText.search(/An example of evidence may include/i)
+    if (evidenceIdx > 50) subText = subText.slice(0, evidenceIdx).trim()
+    // Strip trailing M{n}. measures statement (non-table standards)
+    const trailingMn = subText.search(new RegExp(`\\nM${n}\\.`))
+    if (trailingMn > 0) subText = subText.slice(0, trailingMn).trim()
+    return { id: match.id, text: subText }
   })
   return { intro, subs }
 }
