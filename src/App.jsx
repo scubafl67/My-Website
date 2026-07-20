@@ -20,8 +20,10 @@ function Nav({ onAuth }) {
 
         {/* Desktop links */}
         <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }} className="hidden md:flex">
-          {['Platform','Pricing','Results','Resources'].map(l => (
-            <a key={l} href="#" className="nav-link" style={{ fontSize: '0.9rem', fontWeight: 500 }}>{l}</a>
+          {[['Platform','platform'],['Pricing','pricing'],['Results','results'],['Resources','resources']].map(([l,id]) => (
+            <a key={l} href={`#${id}`} className="nav-link" style={{ fontSize: '0.9rem', fontWeight: 500 }}
+              onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }) }}
+            >{l}</a>
           ))}
         </div>
 
@@ -160,7 +162,7 @@ function Solution() {
   ]
 
   return (
-    <section style={{ padding: '5rem 1.5rem' }}>
+    <section id="platform" style={{ padding: '5rem 1.5rem' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ marginBottom: '1rem' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-verify)' }}>The CIPGuard Approach</span>
@@ -268,7 +270,7 @@ function Features() {
   ]
 
   return (
-    <section style={{ background: 'rgba(13,33,55,0.4)', padding: '5rem 1.5rem', borderTop: '1px solid rgba(0,168,204,0.1)' }}>
+    <section id="features" style={{ background: 'rgba(13,33,55,0.4)', padding: '5rem 1.5rem', borderTop: '1px solid rgba(0,168,204,0.1)' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ marginBottom: '1rem' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-signal)' }}>Platform Capabilities</span>
@@ -328,7 +330,7 @@ function ROICalculator() {
   ]
 
   return (
-    <section style={{ padding: '5rem 1.5rem' }}>
+    <section id="resources" style={{ padding: '5rem 1.5rem' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ marginBottom: '1rem' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-signal)' }}>Your Numbers</span>
@@ -410,7 +412,7 @@ function SocialProof() {
   ]
 
   return (
-    <section style={{ background: 'rgba(13,33,55,0.5)', padding: '5rem 1.5rem', borderTop: '1px solid rgba(0,168,204,0.1)' }}>
+    <section id="results" style={{ background: 'rgba(13,33,55,0.5)', padding: '5rem 1.5rem', borderTop: '1px solid rgba(0,168,204,0.1)' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ marginBottom: '1rem' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-verify)' }}>Customer Results</span>
@@ -523,7 +525,7 @@ function Pricing({ onAuth }) {
   ]
 
   return (
-    <section style={{ padding: '5rem 1.5rem' }}>
+    <section id="pricing" style={{ padding: '5rem 1.5rem' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ marginBottom: '1rem' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-signal)' }}>Transparent Pricing</span>
