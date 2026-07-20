@@ -14,29 +14,33 @@ const FILTERS = ['All', CIP_STATUS.MANDATORY, CIP_STATUS.NEAR_TERM, CIP_STATUS.F
 const docUrlFor = (id) =>
   `https://www.nerc.com/pa/Stand/Pages/ReliabilityStandardsUnitedStates.aspx?std=${id}`
 
-// Some PDFs are extracted with a space between every word/token (e.g. CIP-006-6).
-// Collapse that artifact so downstream parsing works uniformly.
+// Collapse character-spaced PDF artifacts: any whitespace-only lines between tokens.
+// Handles single-space (\n \n), double-space (\n  \n), and triple patterns.
+// Also fixes punctuation stranded on its own line and split non-breaking hyphens.
 function normalizeSpacing(text) {
-  return text.replace(/\n \n/g, ' ').replace(/\n‐\n/g, '-')
+  if (!text) return text
+  return text
+    .replace(/\n([ \t]+\n)+/g, ' ')
+    .replace(/\n([.,;])/g, '$1')
+    .replace(/\n\u2010\n/g, '-')
 }
 
-// Pull the language for a single requirement (e.g. "R1") out of the full standard
-// text. Stops at the NEXT requirement header (R2., R3. …) — NOT at the measure
-// statement (M1.) — so that table-based standards (CIP-004 through CIP-011) include
-// their Part rows which appear after M1 in the document.
+// Extract a single requirement block from the raw document text.
+// Searches in raw text FIRST so structural newlines like \n \nR1. are intact,
+// then normalizes only the extracted block (not the full document).
 function extractRequirement(text, label) {
   if (!text) return null
-  const src = normalizeSpacing(text)
   const n = label.replace(/[^0-9]/g, '')
   // (?!\d) prevents "R1." from matching "R1.5" cross-references in background text
-  const start = new RegExp(`(?:^|\\n)\\s*R${n}\\.(?!\\d)`).exec(src)
+  const start = new RegExp(`(?:^|\\n)\\s*R${n}\\.(?!\\d)`).exec(text)
   if (!start) return null
   const from = start.index + (start[0].startsWith('\n') ? 1 : 0)
-  const rest = src.slice(from + 2)
+  const rest = text.slice(from + 2)
   // Stop at the next requirement header only (not at M1. which precedes table rows)
   const end = /\n\s*R\d+\.(?!\d)/.exec(rest)
-  const body = src.slice(from, end ? from + 2 + end.index : src.length).trim()
-  return body.length > 10 ? body : null
+  const body = text.slice(from, end ? from + 2 + end.index : text.length).trim()
+  // Normalize AFTER extraction — preserves the structural newlines needed above
+  return body.length > 10 ? normalizeSpacing(body) : null
 }
 
 // Parse a requirement block into { intro, subs }.
@@ -47,6 +51,15 @@ function parseSubRequirements(text, reqNum) {
   if (!text) return { intro: '', subs: [] }
   const n = reqNum.replace(/[^0-9]/g, '')
 
+  // Character-spaced PDFs (CIP-006-6 style) normalize to flat text with very few
+  // newlines. Inject structural newlines before N.N part-number tokens so the
+  // sub-pattern below can find them.
+  let workText = text
+  const newlineCount = (text.match(/\n/g) || []).length
+  if (text.length > 200 && newlineCount / text.length < 0.003) {
+    workText = text.replace(new RegExp(` (${n}\\.\\d+)(?= )`, 'g'), '\n$1')
+  }
+
   // Match only N.N (one level deep), not N.N.N.
   // Allow a newline after the part number to handle table cells where content
   // starts on the next line (CIP-006-7.1, CIP-010-5 style blank-line cells).
@@ -56,26 +69,33 @@ function parseSubRequirements(text, reqNum) {
   )
   const matches = []
   let m
-  while ((m = subPattern.exec(text)) !== null) {
+  while ((m = subPattern.exec(workText)) !== null) {
     matches.push({ id: m[1], index: m.index === 0 ? 0 : m.index + 1, matchLen: m[0].length })
   }
-  if (matches.length === 0) return { intro: text, subs: [] }
+  if (matches.length === 0) return { intro: workText, subs: [] }
 
-  // Build intro: trim before the M{n}. measures statement and strip table header
-  let intro = text.slice(0, matches[0].index)
-  const mnIdx = intro.search(new RegExp(`\\nM${n}\\.`))
+  // Build intro: everything before the first sub-part.
+  // Strip measures (M1./M2. etc.), table headers, and VRF/Time Horizon boilerplate.
+  let intro = workText.slice(0, matches[0].index)
+  // Find inline or newline-led M{n}. and strip everything from it onward
+  const mnIdx = intro.search(new RegExp(`(?:\\s)M${n}\\.|\\nM${n}\\.`))
   if (mnIdx > 0) intro = intro.slice(0, mnIdx)
   intro = intro
     .replace(/\n\s*Part\s+Applicable Systems.+?(?:\n|$)/gi, '')
+    .replace(/\s*Part\s+Applicable\s+Systems\s+Requirements\s+Measures\s*/gi, ' ')
+    .replace(/\[Violation Risk Factor:[^\]]*\]/gi, '')
+    .replace(/\[Time Horizon:[^\]]*\]/gi, '')
+    .replace(/\[VRF:[^\]]*\]/gi, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{2,}/g, '\n')
     .trim()
 
   const subs = matches.map((match, i) => {
     const contentStart = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
-    const contentEnd = i + 1 < matches.length ? matches[i + 1].index : text.length
-    let subText = text.slice(contentStart, contentEnd).trim()
+    const contentEnd = i + 1 < matches.length ? matches[i + 1].index : workText.length
+    let subText = workText.slice(contentStart, contentEnd).trim()
     // Strip evidence boilerplate — handles both "An example of evidence may include"
-    // and "Examples of evidence may include" (used in CIP-005-8, CIP-007-7.1, CIP-008-7.1)
-    // and "Acceptable evidence includes" (used in CIP-002 style standards)
+    // and "Examples of evidence may include" (CIP-005-8, CIP-007-7.1, CIP-008-7.1)
     const evidenceIdx = subText.search(/\bexamples? of evidence\b|\bAcceptable evidence\b/i)
     if (evidenceIdx > 50) subText = subText.slice(0, evidenceIdx).trim()
     // Strip trailing M{n}. measures statement (non-table standards)
