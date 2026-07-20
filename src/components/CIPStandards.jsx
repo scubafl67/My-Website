@@ -274,12 +274,12 @@ export default function CIPStandards() {
                 <div style={{ color: '#F6A6A6', fontSize: '0.875rem' }}>{reqModal.error}</div>
               ) : (() => {
                 const { intro, subs } = parseSubRequirements(reqModal.text, reqModal.label)
-                return (
-                  <div>
-                    {intro && (
-                      <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, margin: '0 0 1.25rem', whiteSpace: 'pre-wrap' }}>{intro}</p>
-                    )}
-                    {subs.length > 0 ? (
+                if (subs.length > 0) {
+                  return (
+                    <div>
+                      {intro && (
+                        <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, margin: '0 0 1.25rem', whiteSpace: 'pre-wrap' }}>{intro}</p>
+                      )}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                         {subs.map((sub) => (
                           <div
@@ -291,11 +291,17 @@ export default function CIPStandards() {
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      // No sub-requirements found — render the full text as-is
-                      <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{reqModal.text}</pre>
-                    )}
-                  </div>
+                    </div>
+                  )
+                }
+                const cleaned = reqModal.text
+                  .replace(/\s*\[Violation Risk Factor:[^\]]+\]/gi, '')
+                  .replace(/\s*\[Time Horizon:[^\]]+\]/gi, '')
+                  .replace(/\s*\[VRF:[^\]]+;[^\]]+\]/gi, '')
+                  .replace(/\n[^\n]*Page \d+ of \d+[^\n]*/g, '')
+                  .trim()
+                return (
+                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{cleaned}</pre>
                 )
               })()}
             </div>
