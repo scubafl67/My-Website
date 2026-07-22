@@ -3,10 +3,12 @@ import { Turnstile } from '@marsidev/react-turnstile'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
-// Cloudflare Turnstile site key (public). Defaults to Cloudflare's always-pass
-// TEST key so dev works out of the box; set VITE_TURNSTILE_SITE_KEY for production.
+// Cloudflare Turnstile site key (public).
+// Set VITE_TURNSTILE_SITE_KEY in .env (local) and in Netlify environment variables.
+// Falls back to Cloudflare's always-FAIL test key so a missing env var is obvious
+// rather than silently bypassing the check.
 const TURNSTILE_SITE_KEY =
-  import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAADs4Dl2e3QRsssGc'
+  import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000BB'
 
 // Auth modal with three modes: sign in, sign up, and two-secret password reset.
 // Gates all NERC CIP content behind a CIPGuard account.
