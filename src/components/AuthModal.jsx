@@ -39,7 +39,7 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }) {
     turnstileRef.current?.reset()
   }
 
-  const captchaRequired = mode === 'signin' || mode === 'signup'
+  const captchaRequired = mode === 'signin' || mode === 'signup' || mode === 'reset'
 
   const clearMsgs = () => {
     setError('')
@@ -67,7 +67,7 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }) {
       } else if (mode === 'reset') {
         // Two-secret password recovery via the reset-password edge function
         const { data, error } = await supabase.functions.invoke('reset-password', {
-          body: { email, secret1, secret2, newPassword },
+          body: { email, secret1, secret2, newPassword, captchaToken },
         })
         if (error) {
           // Edge function returns a JSON { error } body on non-2xx
