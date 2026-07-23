@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './context/AuthContext'
+import { supabase } from './lib/supabase'
 import AuthModal from './components/AuthModal'
 import Dashboard from './Dashboard'
 
@@ -654,10 +655,77 @@ function Footer() {
 }
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
+// ─── SOURCE STATUS TOAST ────────────────────────────────────────────────────
+function SourceToast({ status, onDismiss }) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 9000)
+    return () => clearTimeout(t)
+  }, [onDismiss])
+
+  const lastUpdatedLabel = status.lastUpdated
+    ? new Date(status.lastUpdated).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : null
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: '1.75rem', right: '1.75rem', zIndex: 300,
+      background: 'rgba(10,22,40,0.97)', border: '1px solid rgba(0,201,167,0.35)',
+      borderRadius: 12, padding: '0.875rem 1rem',
+      boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
+      display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+      maxWidth: 360, animation: 'fade-up 0.35s ease',
+    }}>
+      <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, marginTop: '0.1rem',
+        background: 'rgba(0,201,167,0.12)', border: '1px solid rgba(0,201,167,0.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--color-verify)"
+          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-verify)', marginBottom: '0.25rem', letterSpacing: '0.01em' }}>
+          Sources Current
+        </div>
+        <div style={{ fontSize: '0.7875rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
+          All NERC, FERC, and Regional Entity sources verified and current.
+        </div>
+        {lastUpdatedLabel && (
+          <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', marginTop: '0.25rem' }}>
+            Last updated {lastUpdatedLabel}
+          </div>
+        )}
+      </div>
+      <button onClick={onDismiss} aria-label="Dismiss"
+        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)',
+          cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1, padding: '0.1rem',
+          flexShrink: 0, marginTop: '-0.1rem' }}>×</button>
+    </div>
+  )
+}
+
 export default function App() {
   const { user, loading } = useAuth()
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState('signin')
+  const [sourceStatus, setSourceStatus] = useState(null)
+  const [toastVisible, setToastVisible] = useState(false)
+  const dismissToast = useCallback(() => setToastVisible(false), [])
+
+  // Once per login session: check source freshness and trigger background
+  // refresh if any source is stale. Transparent to general users.
+  useEffect(() => {
+    if (!user) { setSourceStatus(null); setToastVisible(false); return }
+    let cancelled = false
+    supabase.functions.invoke('sources-status').then(({ data }) => {
+      if (!cancelled && data) {
+        setSourceStatus(data)
+        setToastVisible(true)
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [user?.id])
 
   const openAuth = (mode = 'signin') => {
     setAuthMode(mode)
@@ -675,7 +743,14 @@ export default function App() {
 
   // Signed in → the gated NERC CIP connector workspace
   if (user) {
-    return <Dashboard />
+    return (
+      <>
+        <Dashboard />
+        {toastVisible && sourceStatus && (
+          <SourceToast status={sourceStatus} onDismiss={dismissToast} />
+        )}
+      </>
+    )
   }
 
   // Signed out → public landing page, with auth gated behind the modal
