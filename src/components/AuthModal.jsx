@@ -1,14 +1,14 @@
 import { useRef, useState } from 'react'
-import { Turnstile } from '@marsidev/react-turnstile'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
-// Cloudflare Turnstile site key (public).
-// Set VITE_TURNSTILE_SITE_KEY in .env (local) and in Netlify environment variables.
-// Falls back to Cloudflare's always-FAIL test key so a missing env var is obvious
-// rather than silently bypassing the check.
-const TURNSTILE_SITE_KEY =
-  import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000BB'
+// hCaptcha site key (public).
+// Set VITE_HCAPTCHA_SITE_KEY in Netlify environment variables.
+// Falls back to hCaptcha's always-interactive test key so a missing env var
+// is visible (shows widget) rather than silently bypassing the check.
+const HCAPTCHA_SITE_KEY =
+  import.meta.env.VITE_HCAPTCHA_SITE_KEY || '10000000-ffff-ffff-ffff-000000000001'
 
 // Auth modal with three modes: sign in, sign up, and two-secret password reset.
 // Gates all NERC CIP content behind a CIPGuard account.
@@ -36,7 +36,7 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }) {
   // A token is single-use; after any auth attempt force a fresh challenge.
   const resetCaptcha = () => {
     setCaptchaToken('')
-    turnstileRef.current?.reset()
+    turnstileRef.current?.resetCaptcha()
   }
 
   const captchaRequired = mode === 'signin' || mode === 'signup' || mode === 'reset'
@@ -181,11 +181,11 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }) {
 
           {captchaRequired && (
             <div style={{ marginTop: '0.25rem' }}>
-              <Turnstile
+              <HCaptcha
                 ref={turnstileRef}
-                siteKey={TURNSTILE_SITE_KEY}
-                options={{ theme: 'dark', size: 'flexible' }}
-                onSuccess={setCaptchaToken}
+                sitekey={HCAPTCHA_SITE_KEY}
+                theme="dark"
+                onVerify={setCaptchaToken}
                 onError={() => setCaptchaToken('')}
                 onExpire={() => setCaptchaToken('')}
               />

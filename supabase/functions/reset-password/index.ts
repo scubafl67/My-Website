@@ -6,7 +6,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2"
 // server-side (bcrypt) via verify_recovery_secrets, then the password is reset
 // using the service-role admin API. This endpoint is intentionally pre-login
 // (verify_jwt = false); its auth IS the two-secret challenge plus a valid
-// Cloudflare Turnstile token verified via canonical siteverify.
+// hCaptcha token verified via hCaptcha siteverify.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,13 +22,13 @@ function json(status: number, body: unknown): Response {
 }
 
 async function verifyCaptcha(token: string, ip: string): Promise<boolean> {
-  const secret = Deno.env.get("TURNSTILE_SECRET")
+  const secret = Deno.env.get("HCAPTCHA_SECRET")
   if (!secret) {
-    console.error("TURNSTILE_SECRET is not set")
+    console.error("HCAPTCHA_SECRET is not set")
     return false
   }
   const body = new URLSearchParams({ secret, response: token, remoteip: ip })
-  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+  const res = await fetch("https://api.hcaptcha.com/siteverify", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
