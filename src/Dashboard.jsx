@@ -1,3 +1,4 @@
+import AuditLauncher from './components/AuditLauncher'
 import { useState } from 'react'
 import { useAuth } from './context/AuthContext'
 import CIPStandards from './components/CIPStandards'
@@ -17,6 +18,7 @@ export default function Dashboard() {
     { id: 'standards', label: 'CIP Standards' },
     { id: 'knowledge', label: 'Knowledge Base' },
     { id: 'profile', label: 'Profile' },
+    { id: 'audit', label: 'BES Audit' },
   ]
 
   return (
@@ -70,6 +72,7 @@ export default function Dashboard() {
         </div>
 
         {tab === 'standards' && <CIPStandards />}
+	{tab === 'audit' && <AuditLauncher />}
         {tab === 'knowledge' && <KnowledgeBase />}
         {tab === 'profile' && (
           <div style={{ maxWidth: 720 }}>
