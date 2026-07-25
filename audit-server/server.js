@@ -263,10 +263,37 @@ app.get('/api/audit/download/:dirName', (req, res) => {
   res.download(path.join(dirPath, csvFiles[0]), csvFiles[0])
 })
 
+// ── Supabase heartbeat ────────────────────────────────────────────────────────
+async function sendHeartbeat() {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/server_heartbeat`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'apikey':        SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Prefer':        'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({
+        host:      os.hostname(),
+        hostname:  os.hostname(),
+        platform:  os.platform(),
+        last_seen: new Date().toISOString(),
+        script_ok: fs.existsSync(AUDIT_SCRIPT),
+      }),
+    })
+  } catch (err) {
+    console.warn('[CIPGuard] Heartbeat failed:', err.message)
+  }
+}
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`[CIPGuard Audit Server] Listening on http://127.0.0.1:${PORT}`)
   console.log(`[CIPGuard Audit Server] Script dir:      ${SCRIPT_DIR}`)
   console.log(`[CIPGuard Audit Server] Script exists:   ${fs.existsSync(AUDIT_SCRIPT)}`)
   console.log(`[CIPGuard Audit Server] Supabase upload: ${!!(SUPABASE_URL && SUPABASE_SERVICE_KEY) ? 'enabled' : 'disabled'}`)
+  sendHeartbeat()
+  setInterval(sendHeartbeat, 30_000)
 })

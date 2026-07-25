@@ -236,10 +236,24 @@ export default function AuditLauncher() {
 
   const checkServer = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/api/health`, { signal: AbortSignal.timeout(2000) })
-      const d = await r.json()
-      setServerOk(d.ok)
-      setServerInfo(d)
+      // Check Supabase heartbeat (works from live HTTPS page — no mixed-content issue)
+      const r = await fetch(
+        `${SB_URL}/rest/v1/server_heartbeat?select=host,hostname,platform,last_seen,script_ok&limit=1`,
+        { headers: { 'apikey': SB_ANON_KEY, 'Authorization': `Bearer ${SB_ANON_KEY}` } }
+      )
+      if (r.ok) {
+        const rows = await r.json()
+        if (rows.length) {
+          const hb      = rows[0]
+          const ageSecs = (Date.now() - new Date(hb.last_seen).getTime()) / 1000
+          const online  = ageSecs < 60
+          setServerOk(online)
+          setServerInfo(online ? { hostname: hb.hostname, platform: hb.platform, scriptExists: hb.script_ok } : null)
+          return
+        }
+      }
+      setServerOk(false)
+      setServerInfo(null)
     } catch {
       setServerOk(false)
       setServerInfo(null)
