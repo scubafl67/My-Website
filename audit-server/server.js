@@ -24,7 +24,7 @@ const PORT = 3001
 
 const SCRIPT_DIR = path.resolve(
   __dirname,
-  '../../../skills/launch-linux-baseline'
+  '../../skills/launch-linux-baseline'
 )
 const AUDIT_SCRIPT = path.join(SCRIPT_DIR, 'audit_master.sh')
 

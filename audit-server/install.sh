@@ -10,7 +10,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-AUDIT_SCRIPT="$(cd "$SCRIPT_DIR/../../../skills/launch-linux-baseline" && pwd)/audit_master.sh"
+AUDIT_SCRIPT="$(cd "$SCRIPT_DIR/../../skills/launch-linux-baseline" && pwd)/audit_master.sh"
 WRAPPER="/usr/local/bin/cipguard-audit"
 SUDOERS_FILE="/etc/sudoers.d/cipguard-audit"
 CURRENT_USER="${SUDO_USER:-$(whoami)}"
