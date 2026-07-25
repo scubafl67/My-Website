@@ -205,7 +205,7 @@ export default function AuditLauncher() {
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  const card: React.CSSProperties = {
+  const card = {
     background: 'linear-gradient(180deg, rgba(13,33,55,0.95), rgba(10,22,40,0.95))',
     border: '1px solid rgba(0,168,204,0.2)',
     borderRadius: 14, padding: '1.5rem',
