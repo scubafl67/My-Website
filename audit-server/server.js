@@ -102,21 +102,14 @@ async function runJob(job) {
 
   await patchJob(job.id, { status: 'running', started_at: new Date().toISOString() })
 
-  const args = [AUDIT_SCRIPT]
+  // Use direct sudo bash — avoids the cipguard-audit wrapper's set -u array bug
+  const args = ['bash', AUDIT_SCRIPT]
   if (job.module !== 'all') args.push('-m', job.module)
-
-  const sudoWrapper = '/usr/local/bin/cipguard-audit'
-  let child
-
-  if (fs.existsSync(sudoWrapper)) {
-    const env = { ...process.env, AUDIT_MODULE: job.module }
-    child = spawn('sudo', [sudoWrapper], { env })
-  } else {
-    child = spawn('sudo', ['bash', ...args], { cwd: SCRIPT_DIR })
-  }
+  const child = spawn('sudo', args, { cwd: SCRIPT_DIR })
 
   let outputDir  = null
   let lineBuffer = []
+  let stopped    = false
 
   const flushLines = async () => {
     if (!lineBuffer.length) return
@@ -125,6 +118,15 @@ async function runJob(job) {
   }
 
   const flushInterval = setInterval(flushLines, 500)
+
+  // Watch for stop signal from UI via Supabase
+  const stopWatcher = setInterval(async () => {
+    const rows = await sbFetch(`/audit_jobs?id=eq.${job.id}&select=status`).then(r => r.ok ? r.json() : []).catch(() => [])
+    if (rows[0]?.status === 'stopped' && !stopped) {
+      stopped = true
+      try { process.kill(-child.pid, 'SIGTERM') } catch (_) { child.kill('SIGTERM') }
+    }
+  }, 2000)
 
   const pushLine = (text, type) => {
     const stripped = text.replace(/\x1b\[[0-9;]*m/g, '')
@@ -138,13 +140,13 @@ async function runJob(job) {
   child.stdout.on('data', d => pushLine(d.toString(), 'stdout'))
   child.stderr.on('data', d => pushLine(d.toString(), 'stderr'))
 
-  await new Promise(resolve => child.on('close', resolve))
+  const exitCode = await new Promise(resolve => child.on('close', resolve))
 
   clearInterval(flushInterval)
+  clearInterval(stopWatcher)
   await flushLines()
 
-  const exitCode = child.exitCode
-  const status   = exitCode === 0 ? 'complete' : 'error'
+  const status = stopped ? 'stopped' : exitCode === 0 ? 'complete' : 'error'
 
   lineBuffer.push({
     text: exitCode === 0
