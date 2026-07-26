@@ -408,6 +408,7 @@ export default function CIPStandards() {
                 <div style={{ color: '#F6A6A6', fontSize: '0.875rem' }}>{reqModal.error}</div>
               ) : (() => {
                 const { intro, subs, measure } = parseSubRequirements(reqModal.text, reqModal.label)
+                const isTableFormat = subs.length > 0 && subs.some((s) => s.applicableSystems)
 
                 const measureBlock = measure && (
                   <div style={{ marginTop: '1.25rem' }}>
@@ -419,55 +420,109 @@ export default function CIPStandards() {
                 )
 
                 if (subs.length > 0) {
-                  const labelStyle = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '0.3rem' }
+                  // ── Format B: render as matrix table matching the PDF layout ──
+                  if (isTableFormat) {
+                    const thStyle = {
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: '#fff',
+                      background: 'rgba(0,90,140,0.85)',
+                      textAlign: 'left',
+                      borderBottom: '1px solid rgba(0,168,204,0.35)',
+                      whiteSpace: 'nowrap',
+                    }
+                    const tdStyle = {
+                      padding: '0.625rem 0.75rem',
+                      fontSize: '0.8125rem',
+                      color: 'rgba(255,255,255,0.85)',
+                      lineHeight: 1.55,
+                      verticalAlign: 'top',
+                      borderBottom: '1px solid rgba(0,168,204,0.1)',
+                    }
+                    return (
+                      <div>
+                        {intro && (
+                          <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, margin: '0 0 1rem', whiteSpace: 'pre-wrap' }}>{intro}</p>
+                        )}
+                        <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid rgba(0,168,204,0.25)' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                            <colgroup>
+                              <col style={{ width: '7%' }} />
+                              <col style={{ width: '25%' }} />
+                              <col style={{ width: '43%' }} />
+                              <col style={{ width: '25%' }} />
+                            </colgroup>
+                            <thead>
+                              <tr>
+                                <th style={thStyle}>Part</th>
+                                <th style={thStyle}>Applicable Systems</th>
+                                <th style={thStyle}>Requirements</th>
+                                <th style={thStyle}>Measures</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {subs.map((sub, idx) => (
+                                <tr key={sub.id} style={{ background: idx % 2 === 0 ? 'rgba(0,168,204,0.04)' : 'transparent' }}>
+                                  {/* Part */}
+                                  <td style={{ ...tdStyle, fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap' }}>
+                                    {sub.id}
+                                  </td>
+                                  {/* Applicable Systems */}
+                                  <td style={{ ...tdStyle, color: 'rgba(255,255,255,0.68)', whiteSpace: 'pre-wrap' }}>
+                                    {sub.applicableSystems || '—'}
+                                  </td>
+                                  {/* Requirements */}
+                                  <td style={{ ...tdStyle, whiteSpace: 'pre-wrap' }}>
+                                    {sub.text}
+                                    {sub.subSubs && sub.subSubs.length > 0 && (
+                                      <div style={{ marginTop: sub.text ? '0.5rem' : 0, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                        {sub.subSubs.map((ss) => (
+                                          <div key={ss.id} style={{ display: 'flex', gap: '0.5rem', paddingLeft: '0.25rem', borderLeft: '2px solid rgba(0,168,204,0.35)' }}>
+                                            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 36 }}>{ss.id}</span>
+                                            <span style={{ fontSize: '0.7875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>{ss.text}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </td>
+                                  {/* Per-part Measures */}
+                                  <td style={{ ...tdStyle, color: 'rgba(255,255,255,0.65)', whiteSpace: 'pre-wrap' }}>
+                                    {sub.partMeasure || '—'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {measureBlock}
+                      </div>
+                    )
+                  }
+
+                  // ── Format A: card layout ──
                   return (
                     <div>
                       {intro && (
                         <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, margin: '0 0 1.25rem', whiteSpace: 'pre-wrap' }}>{intro}</p>
                       )}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                         {subs.map((sub) => (
-                          <div key={sub.id} style={{ background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.18)', borderRadius: 8, padding: '0.875rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-
-                            {/* Part ID */}
-                            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-signal)' }}>{sub.id}</span>
-
-                            {/* Applicable Systems */}
-                            {sub.applicableSystems && (
-                              <div>
-                                <div style={labelStyle}>Applicable Systems</div>
-                                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.55, margin: 0, whiteSpace: 'pre-wrap' }}>{sub.applicableSystems}</p>
-                              </div>
-                            )}
-
-                            {/* Requirements */}
-                            <div>
-                              <div style={labelStyle}>Requirements</div>
-                              {sub.text && (
-                                <p style={{ fontSize: '0.8375rem', color: 'rgba(255,255,255,0.88)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{sub.text}</p>
-                              )}
+                          <div key={sub.id} style={{ display: 'flex', gap: '0.875rem', background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.18)', borderRadius: 8, padding: '0.75rem 1rem' }}>
+                            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 36, paddingTop: '0.15rem' }}>{sub.id}</span>
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontSize: '0.8375rem', color: 'rgba(255,255,255,0.82)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{sub.text}</span>
                               {sub.subSubs && sub.subSubs.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: sub.text ? '0.625rem' : 0 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
                                   {sub.subSubs.map((ss) => (
-                                    <div key={ss.id} style={{ display: 'flex', gap: '0.75rem', background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.15)', borderRadius: 6, padding: '0.55rem 0.75rem' }}>
-                                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 38, paddingTop: '0.1rem' }}>{ss.id}</span>
-                                      <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.82)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{ss.text}</span>
+                                    <div key={ss.id} style={{ display: 'flex', gap: '0.75rem', background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.15)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+                                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 38 }}>{ss.id}</span>
+                                      <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{ss.text}</span>
                                     </div>
                                   ))}
                                 </div>
                               )}
                             </div>
-
-                            {/* Per-part Measures */}
-                            {sub.partMeasure && (
-                              <div>
-                                <div style={labelStyle}>Measures</div>
-                                <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.15)', borderRadius: 6, padding: '0.55rem 0.75rem' }}>
-                                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 38, paddingTop: '0.1rem' }}>M{sub.id}</span>
-                                  <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{sub.partMeasure}</span>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         ))}
                       </div>
@@ -476,7 +531,7 @@ export default function CIPStandards() {
                   )
                 }
 
-                // No sub-parts found — render full requirement text cleaned up
+                // No sub-parts — render full requirement text
                 const cleaned = cleanText(reqModal.text)
                 return (
                   <div>
