@@ -10,24 +10,43 @@ const STATUS_META = {
 
 const FILTERS = ['All', CIP_STATUS.MANDATORY, CIP_STATUS.NEAR_TERM, CIP_STATUS.FUTURE]
 
-// The official standard text is stored under this URL per standard id.
 const docUrlFor = (id) =>
   `https://www.nerc.com/pa/Stand/Pages/ReliabilityStandardsUnitedStates.aspx?std=${id}`
 
-// Collapse character-spaced PDF artifacts: any whitespace-only lines between tokens.
-// Handles single-space (\n \n), double-space (\n  \n), and triple patterns.
-// Also fixes punctuation stranded on its own line and split non-breaking hyphens.
+// ── Text normalization ────────────────────────────────────────────────────────
+
 function normalizeSpacing(text) {
   if (!text) return text
   return text
-    .replace(/\n([ \t\u00A0]+\n)+/g, ' ')
+    .replace(/\n([ \t ]+\n)+/g, ' ')
     .replace(/\n([.,;])/g, '$1')
-    .replace(/\n\u2010\n/g, '-')
+    .replace(/\n‐\n/g, '-')
 }
 
-// Extract a single requirement block from the raw document text.
-// Searches in raw text FIRST so structural newlines like \n \nR1. are intact,
-// then normalizes only the extracted block (not the full document).
+// Strip boilerplate that must never appear in displayed requirement/measure text.
+function cleanText(text) {
+  if (!text) return ''
+  return text
+    .replace(/\[Violation Risk Factor:[^\]]*\]/gi, '')
+    .replace(/\[Time Horizon:[^\]]*\]/gi, '')
+    .replace(/\[VRF:[^\]]*\]/gi, '')
+    // Page headers: "CIP-XXX – Title \n  Page N of N"
+    .replace(/\nCIP-[\w.\-]+ [^\n]+\n[ \t]*Page \d+ of \d+[^\n]*/g, '')
+    .replace(/\n[ \t]*Page \d+ of \d+[^\n]*/g, '')
+    // Table column header rows
+    .replace(/\s*Part\s+Applicable\s+Systems\s+Requirements\s+Measures\s*/gi, ' ')
+    .replace(/\n\s*Part\s+Applicable\s+Systems[^\n]*/gi, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+// Back-matter stop pattern — shared by all extractor functions.
+// Stops at: next R requirement, C. Compliance section, VSL tables, appendices.
+const BACKMATTER = /\n\s*(?:R\d+\.(?!\d)|C\.?\s|C\d+\.\s|Compliance[\s\n]|Violation Severity Level|Table of Compliance|Associated Documents|Regional Variances|Interpretations|Supplemental Material|D\.\s+Regional|E\.\s+Interpretations)/
+
+// ── extractRequirement ────────────────────────────────────────────────────────
+
 function extractRequirement(text, label) {
   if (!text) return null
   const n = label.replace(/[^0-9]/g, '')
@@ -36,15 +55,13 @@ function extractRequirement(text, label) {
   if (!start) return null
   const from = start.index + (start[0].startsWith('\n') ? 1 : 0)
   const rest = text.slice(from + 2)
-  // Stop at: next requirement, compliance section (C1./C.), VSL tables,
-  // or any of the standard's back-matter section headers.
-  const end = /\n\s*(?:R\d+\.(?!\d)|C\.?\s|C\d+\.\s|Compliance\s|Violation Severity Level|Table of Compliance|Associated Documents|Regional Variances|Interpretations|Supplemental Material|D\.\s+Regional|E\.\s+Interpretations)/.exec(rest)
+  const end = BACKMATTER.exec(rest)
   const body = text.slice(from, end ? from + 2 + end.index : text.length).trim()
-  // Normalize AFTER extraction — preserves the structural newlines needed above
   return body.length > 10 ? normalizeSpacing(body) : null
 }
 
-// Extract the measure block (M1./M2. etc.) for a given requirement number from the full text.
+// ── extractMeasure ────────────────────────────────────────────────────────────
+
 function extractMeasure(text, reqNum) {
   if (!text) return null
   const n = reqNum.replace(/[^0-9]/g, '')
@@ -52,68 +69,89 @@ function extractMeasure(text, reqNum) {
   if (!start) return null
   const from = start.index + (start[0].startsWith('\n') ? 1 : 0)
   const rest = text.slice(from)
-  // Stop at next M/R header or any compliance back-matter section
-  const end = /\n\s*(?:M\d+\.|R\d+\.(?!\d)|C\.?\s|C\d+\.\s|Compliance\s|Violation Severity Level|Table of Compliance|Associated Documents|Regional Variances|Interpretations|Supplemental Material)/.exec(rest.slice(1))
+  const stopPat = /\n\s*(?:M\d+\.|R\d+\.(?!\d)|C\.?\s|Compliance[\s\n]|Violation Severity Level|Table of Compliance|Associated Documents|Regional Variances|Interpretations)/
+  const end = stopPat.exec(rest.slice(1))
   const body = end ? rest.slice(0, 1 + end.index).trim() : rest.trim()
-  return body.length > 5 ? normalizeSpacing(body) : null
+  const cleaned = cleanText(body)
+  return cleaned.length > 5 ? cleaned : null
 }
 
-// Parse a requirement block into { intro, subs, measure }.
-// subs is an array of { id: '2.1', text: '...' } objects.
-// Only matches TOP-LEVEL parts (N.N) — sub-sub-requirements (N.N.N) stay inside
-// the parent part's text so they aren't fragmented into separate rows.
+// ── parseSubRequirements ──────────────────────────────────────────────────────
+//
+// Two document formats exist across all CIP standards:
+//
+//   Format A (CIP-002/003/012/013/014/015):  sub-parts come BEFORE M{n}
+//     R1. [intro]
+//     1.1. [req text]
+//     1.2. [req text]
+//     M1. [measure text]
+//
+//   Format B (CIP-004/005/006/007/008/009/010/011 table-based):
+//     R1. [intro]
+//     M1. [measure text]   ← measure appears FIRST
+//     Table R1 – Title
+//     Part  Applicable Systems  Requirements  Measures(evidence)
+//     1.1   [systems]           [req text]    [evidence text]
+//     1.2   ...
+//
+// Detection: if M{n}. appears before the first N.N sub-part → Format B.
+// For Format B, evidence boilerplate is stripped from each sub-part row so
+// only the requirement language remains.
+
 function parseSubRequirements(text, reqNum) {
   if (!text) return { intro: '', subs: [], measure: null }
   const n = reqNum.replace(/[^0-9]/g, '')
 
-  // Extract measure BEFORE modifying workText
   const measure = extractMeasure(text, reqNum)
 
-  // Character-spaced PDFs (CIP-006-6 style) normalize to flat text with very few
-  // newlines. Inject structural newlines before N.N part-number tokens so the
-  // sub-pattern below can find them.
+  // Inject structural newlines for character-spaced PDFs (CIP-006-6 style)
   let workText = text
   const newlineCount = (text.match(/\n/g) || []).length
   if (text.length > 200 && newlineCount / text.length < 0.003) {
     workText = text.replace(new RegExp(` (${n}\\.\\d+)(?= )`, 'g'), '\n$1')
   }
 
-  // Trim workText to stop before the measure block so it doesn't bleed into subs
-  const measureStart = new RegExp(`(?:^|\\n)\\s*M${n}\\.(?!\\d)`).exec(workText)
-  if (measureStart) workText = workText.slice(0, measureStart.index).trim()
+  // Detect format by comparing positions of M{n}. and first N.N sub-part
+  const measurePos = new RegExp(`(?:^|\\n)\\s*M${n}\\.(?!\\d)`).exec(workText)
+  const firstSubPos = new RegExp(`(?:^|\\n)[ \\t]*${n}\\.\\d`).exec(workText)
+  const isTableFormat = measurePos && firstSubPos && measurePos.index < firstSubPos.index
 
-  // Match only N.N (one level deep), not N.N.N.
+  // For Format A: trim at M{n} so sub-parts don't bleed into the measure block.
+  // For Format B: keep everything — sub-parts follow the measure in the table.
+  let parseText = workText
+  if (!isTableFormat && measurePos) {
+    parseText = workText.slice(0, measurePos.index).trim()
+  }
+
+  // Match only N.N (one level deep); N.N.N stays inside its parent sub text
   const subPattern = new RegExp(
     `(?:^|\\n)[ \\t]*(${n}\\.\\d+)[ \\t]*[.:]?(?:[ \\t]+|\\n)`,
     'g'
   )
   const matches = []
   let m
-  while ((m = subPattern.exec(workText)) !== null) {
+  while ((m = subPattern.exec(parseText)) !== null) {
     matches.push({ id: m[1], index: m.index === 0 ? 0 : m.index + 1, matchLen: m[0].length })
   }
-  if (matches.length === 0) return { intro: workText, subs: [], measure }
+  if (matches.length === 0) return { intro: cleanText(parseText), subs: [], measure }
 
-  // Build intro: everything before the first sub-part.
-  let intro = workText.slice(0, matches[0].index)
-  intro = intro
-    .replace(/\n\s*Part\s+Applicable Systems.+?(?:\n|$)/gi, '')
-    .replace(/\s*Part\s+Applicable\s+Systems\s+Requirements\s+Measures\s*/gi, ' ')
-    .replace(/\[Violation Risk Factor:[^\]]*\]/gi, '')
-    .replace(/\[Time Horizon:[^\]]*\]/gi, '')
-    .replace(/\[VRF:[^\]]*\]/gi, '')
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\n{2,}/g, '\n')
-    .trim()
+  const intro = cleanText(parseText.slice(0, matches[0].index))
 
   const subs = matches.map((match, i) => {
     const contentStart = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
-    const contentEnd = i + 1 < matches.length ? matches[i + 1].index : workText.length
-    let subText = workText.slice(contentStart, contentEnd).trim()
-    return { id: match.id, text: subText }
+    const contentEnd = i + 1 < matches.length ? matches[i + 1].index : parseText.length
+    let subText = parseText.slice(contentStart, contentEnd).trim()
+    // Strip evidence/measures column text from Format B table rows.
+    // Evidence text always starts with a recognizable phrase.
+    const evidenceIdx = subText.search(/\bexamples? of (?:acceptable )?evidence\b|\bAn example of evidence\b|\bAcceptable evidence\b/i)
+    if (evidenceIdx > 30) subText = subText.slice(0, evidenceIdx).trim()
+    return { id: match.id, text: cleanText(subText) }
   })
+
   return { intro, subs, measure }
 }
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function CIPStandards() {
   const [standards, setStandards] = useState([])
@@ -122,7 +160,6 @@ export default function CIPStandards() {
   const [loadError, setLoadError] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
-  // Requirement modal: { standard, label, loading, text, error }
   const [reqModal, setReqModal] = useState(null)
 
   useEffect(() => {
@@ -225,7 +262,7 @@ export default function CIPStandards() {
         <>
           {tier === 'general' && (
             <div style={{ background: 'rgba(0,168,204,0.1)', border: '1px solid rgba(0,168,204,0.3)', borderRadius: 10, padding: '0.875rem 1.125rem', marginBottom: '1.25rem', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
-              <strong style={{ color: 'var(--color-signal)' }}>General access</strong> — you're viewing the <strong>currently mandatory</strong> NERC CIP standards. Near-term and future standards require full access; contact your administrator to upgrade.
+              <strong style={{ color: 'var(--color-signal)' }}>General access</strong> — you’re viewing the <strong>currently mandatory</strong> NERC CIP standards. Near-term and future standards require full access; contact your administrator to upgrade.
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
@@ -234,7 +271,6 @@ export default function CIPStandards() {
               return (
                 <div key={s.id} style={{ background: 'rgba(13,33,55,0.8)', border: '1px solid rgba(0,168,204,0.15)', borderRadius: 12, padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.5rem', gap: '0.5rem' }}>
-                    {/* Tile id links to the official NERC standard PDF */}
                     {s.nerc_url ? (
                       <a href={s.nerc_url} target="_blank" rel="noreferrer" style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-clear)', textDecoration: 'none' }} title="Open the official NERC standard (PDF)">{s.id} ↗</a>
                     ) : (
@@ -248,7 +284,6 @@ export default function CIPStandards() {
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-warning)', fontStyle: 'italic', margin: '0 0 0.75rem' }}>{s.note}</p>
                   )}
 
-                  {/* Document links */}
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                     {s.nerc_url && <a href={s.nerc_url} target="_blank" rel="noreferrer" style={linkStyle}>📄 Standard (NERC.com)</a>}
                     {s.technical_rationale_url && <a href={s.technical_rationale_url} target="_blank" rel="noreferrer" style={linkStyle}>📐 Technical Rationale</a>}
@@ -289,6 +324,7 @@ export default function CIPStandards() {
             onClick={(e) => e.stopPropagation()}
             style={{ width: '100%', maxWidth: 720, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, rgba(13,33,55,0.99), rgba(10,22,40,0.99))', border: '1px solid rgba(0,168,204,0.3)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,0.55)' }}
           >
+            {/* Modal header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(0,168,204,0.15)' }}>
               <div>
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-clear)', fontSize: '0.875rem' }}>{reqModal.standard.id} · {reqModal.label}</div>
@@ -296,6 +332,8 @@ export default function CIPStandards() {
               </div>
               <button onClick={() => setReqModal(null)} aria-label="Close" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
+
+            {/* Modal body */}
             <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto' }}>
               {reqModal.loading ? (
                 <div style={{ color: 'rgba(255,255,255,0.5)' }}>Loading requirement language…</div>
@@ -303,6 +341,7 @@ export default function CIPStandards() {
                 <div style={{ color: '#F6A6A6', fontSize: '0.875rem' }}>{reqModal.error}</div>
               ) : (() => {
                 const { intro, subs, measure } = parseSubRequirements(reqModal.text, reqModal.label)
+
                 const measureBlock = measure && (
                   <div style={{ marginTop: '1.25rem' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-signal)', marginBottom: '0.5rem' }}>Measures</div>
@@ -311,6 +350,7 @@ export default function CIPStandards() {
                     </div>
                   </div>
                 )
+
                 if (subs.length > 0) {
                   return (
                     <div>
@@ -332,12 +372,9 @@ export default function CIPStandards() {
                     </div>
                   )
                 }
-                const cleaned = reqModal.text
-                  .replace(/\s*\[Violation Risk Factor:[^\]]+\]/gi, '')
-                  .replace(/\s*\[Time Horizon:[^\]]+\]/gi, '')
-                  .replace(/\s*\[VRF:[^\]]+;[^\]]+\]/gi, '')
-                  .replace(/\n[^\n]*Page \d+ of \d+[^\n]*/g, '')
-                  .trim()
+
+                // No sub-parts found — render full requirement text cleaned up
+                const cleaned = cleanText(reqModal.text)
                 return (
                   <div>
                     <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{cleaned}</pre>
@@ -346,6 +383,8 @@ export default function CIPStandards() {
                 )
               })()}
             </div>
+
+            {/* Modal footer */}
             <div style={{ padding: '0.875rem 1.5rem', borderTop: '1px solid rgba(0,168,204,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>Excerpted from the official standard text. Verify against the source PDF.</span>
               {reqModal.standard.nerc_url && (
