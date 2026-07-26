@@ -215,7 +215,28 @@ function parseSubRequirements(text, reqNum) {
     }
   })
 
-  return { intro, subs, measure }
+  // Post-process Format B: merge continuation rows back into the previous sub.
+  // A genuine sub-part always has Applicable Systems; a row with no systems
+  // and text that begins mid-sentence is a PDF line-wrap artifact (e.g. "Part
+  // 4.1" broken across lines becomes a phantom "4.1" sub-part whose text
+  // continues the previous row's requirement sentence).
+  const CONTINUATION = /^(?:[a-z]|for |to |at |unless |except |and |or |in |of |with |that |their )/
+  let finalSubs = subs
+  if (isTableFormat) {
+    finalSubs = []
+    for (const sub of subs) {
+      const isContinuation = !sub.applicableSystems && CONTINUATION.test(sub.text)
+      if (isContinuation && finalSubs.length > 0) {
+        const prev = finalSubs[finalSubs.length - 1]
+        prev.text = (prev.text + ' ' + sub.text).trim()
+        if (!prev.partMeasure && sub.partMeasure) prev.partMeasure = sub.partMeasure
+      } else {
+        finalSubs.push({ ...sub })
+      }
+    }
+  }
+
+  return { intro, subs: finalSubs, measure }
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
