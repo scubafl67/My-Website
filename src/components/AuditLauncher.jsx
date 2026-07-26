@@ -238,7 +238,7 @@ export default function AuditLauncher() {
     try {
       // Check Supabase heartbeat (works from live HTTPS page — no mixed-content issue)
       const r = await fetch(
-        `${SB_URL}/rest/v1/server_heartbeat?select=host,hostname,platform,last_seen,script_ok&limit=1`,
+        `${SB_URL}/rest/v1/server_heartbeat?select=host,hostname,platform,last_seen,script_ok&order=last_seen.desc&limit=1`,
         { headers: { 'apikey': SB_ANON_KEY, 'Authorization': `Bearer ${SB_ANON_KEY}` } }
       )
       if (r.ok) {
