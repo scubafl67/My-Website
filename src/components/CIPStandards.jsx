@@ -43,13 +43,30 @@ function extractRequirement(text, label) {
   return body.length > 10 ? normalizeSpacing(body) : null
 }
 
-// Parse a requirement block into { intro, subs }.
+// Extract the measure block (M1./M2. etc.) for a given requirement number from the full text.
+function extractMeasure(text, reqNum) {
+  if (!text) return null
+  const n = reqNum.replace(/[^0-9]/g, '')
+  const start = new RegExp(`(?:^|\\n)\\s*M${n}\\.(?!\\d)`).exec(text)
+  if (!start) return null
+  const from = start.index + (start[0].startsWith('\n') ? 1 : 0)
+  const rest = text.slice(from)
+  // Stop at next M or R header
+  const end = new RegExp(`\\n\\s*(?:M\\d+|R\\d+)\\.(?!\\d)`).exec(rest.slice(1))
+  const body = end ? rest.slice(0, 1 + end.index).trim() : rest.trim()
+  return body.length > 5 ? normalizeSpacing(body) : null
+}
+
+// Parse a requirement block into { intro, subs, measure }.
 // subs is an array of { id: '2.1', text: '...' } objects.
 // Only matches TOP-LEVEL parts (N.N) — sub-sub-requirements (N.N.N) stay inside
 // the parent part's text so they aren't fragmented into separate rows.
 function parseSubRequirements(text, reqNum) {
-  if (!text) return { intro: '', subs: [] }
+  if (!text) return { intro: '', subs: [], measure: null }
   const n = reqNum.replace(/[^0-9]/g, '')
+
+  // Extract measure BEFORE modifying workText
+  const measure = extractMeasure(text, reqNum)
 
   // Character-spaced PDFs (CIP-006-6 style) normalize to flat text with very few
   // newlines. Inject structural newlines before N.N part-number tokens so the
@@ -60,9 +77,11 @@ function parseSubRequirements(text, reqNum) {
     workText = text.replace(new RegExp(` (${n}\\.\\d+)(?= )`, 'g'), '\n$1')
   }
 
+  // Trim workText to stop before the measure block so it doesn't bleed into subs
+  const measureStart = new RegExp(`(?:^|\\n)\\s*M${n}\\.(?!\\d)`).exec(workText)
+  if (measureStart) workText = workText.slice(0, measureStart.index).trim()
+
   // Match only N.N (one level deep), not N.N.N.
-  // Allow a newline after the part number to handle table cells where content
-  // starts on the next line (CIP-006-7.1, CIP-010-5 style blank-line cells).
   const subPattern = new RegExp(
     `(?:^|\\n)[ \\t]*(${n}\\.\\d+)[ \\t]*[.:]?(?:[ \\t]+|\\n)`,
     'g'
@@ -72,14 +91,10 @@ function parseSubRequirements(text, reqNum) {
   while ((m = subPattern.exec(workText)) !== null) {
     matches.push({ id: m[1], index: m.index === 0 ? 0 : m.index + 1, matchLen: m[0].length })
   }
-  if (matches.length === 0) return { intro: workText, subs: [] }
+  if (matches.length === 0) return { intro: workText, subs: [], measure }
 
   // Build intro: everything before the first sub-part.
-  // Strip measures (M1./M2. etc.), table headers, and VRF/Time Horizon boilerplate.
   let intro = workText.slice(0, matches[0].index)
-  // Find inline or newline-led M{n}. and strip everything from it onward
-  const mnIdx = intro.search(new RegExp(`(?:\\s)M${n}\\.|\\nM${n}\\.`))
-  if (mnIdx > 0) intro = intro.slice(0, mnIdx)
   intro = intro
     .replace(/\n\s*Part\s+Applicable Systems.+?(?:\n|$)/gi, '')
     .replace(/\s*Part\s+Applicable\s+Systems\s+Requirements\s+Measures\s*/gi, ' ')
@@ -94,16 +109,9 @@ function parseSubRequirements(text, reqNum) {
     const contentStart = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
     const contentEnd = i + 1 < matches.length ? matches[i + 1].index : workText.length
     let subText = workText.slice(contentStart, contentEnd).trim()
-    // Strip evidence boilerplate — handles both "An example of evidence may include"
-    // and "Examples of evidence may include" (CIP-005-8, CIP-007-7.1, CIP-008-7.1)
-    const evidenceIdx = subText.search(/\bexamples? of evidence\b|\bAcceptable evidence\b/i)
-    if (evidenceIdx > 50) subText = subText.slice(0, evidenceIdx).trim()
-    // Strip trailing M{n}. measures statement (non-table standards)
-    const trailingMn = subText.search(new RegExp(`\\nM${n}\\.`))
-    if (trailingMn > 0) subText = subText.slice(0, trailingMn).trim()
     return { id: match.id, text: subText }
   })
-  return { intro, subs }
+  return { intro, subs, measure }
 }
 
 export default function CIPStandards() {
@@ -293,7 +301,15 @@ export default function CIPStandards() {
               ) : reqModal.error ? (
                 <div style={{ color: '#F6A6A6', fontSize: '0.875rem' }}>{reqModal.error}</div>
               ) : (() => {
-                const { intro, subs } = parseSubRequirements(reqModal.text, reqModal.label)
+                const { intro, subs, measure } = parseSubRequirements(reqModal.text, reqModal.label)
+                const measureBlock = measure && (
+                  <div style={{ marginTop: '1.25rem' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-signal)', marginBottom: '0.5rem' }}>Measures</div>
+                    <div style={{ background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.18)', borderRadius: 8, padding: '0.75rem 1rem' }}>
+                      <p style={{ fontSize: '0.8375rem', color: 'rgba(255,255,255,0.82)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{measure}</p>
+                    </div>
+                  </div>
+                )
                 if (subs.length > 0) {
                   return (
                     <div>
@@ -311,6 +327,7 @@ export default function CIPStandards() {
                           </div>
                         ))}
                       </div>
+                      {measureBlock}
                     </div>
                   )
                 }
@@ -321,7 +338,10 @@ export default function CIPStandards() {
                   .replace(/\n[^\n]*Page \d+ of \d+[^\n]*/g, '')
                   .trim()
                 return (
-                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{cleaned}</pre>
+                  <div>
+                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: 0 }}>{cleaned}</pre>
+                    {measureBlock}
+                  </div>
                 )
               })()}
             </div>
