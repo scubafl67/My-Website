@@ -95,8 +95,28 @@ function extractMeasure(text, reqNum) {
 //     1.2   ...
 //
 // Detection: if M{n}. appears before the first N.N sub-part → Format B.
-// For Format B, evidence boilerplate is stripped from each sub-part row so
-// only the requirement language remains.
+// For Format B, the "Applicable Systems" column text (lists of system category
+// names) is stripped from each sub-part row, leaving only the requirement language.
+
+// Lines that belong to the "Applicable Systems" column in Format B tables.
+const SYS_LINE = /^(?:\s*\d+\.\s*)?(?:High\s+Impact|Medium\s+Impact|Low\s+Impact|EACMS|PACS|PCA|Electronic\s+Access|Physical\s+Access|BES\s+Cyber|All\s+applicable\s+Cyber|and\s+their\s+associated|with\s+(?:External|Internal)|without\s+External|Control\s+Center|Generation\s+(?:at|Resources)|Transmission\s+(?:Owner|stations)|Communication\s+Links)/i
+const CONNECTOR_ONLY = /^[\s;,]*(?:and|or|\d+\.)\s*$/i
+
+function stripApplicableSystems(text) {
+  const lines = text.split('\n')
+  let reqStart = 0
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line || CONNECTOR_ONLY.test(line) || SYS_LINE.test(line)) {
+      reqStart = i + 1
+    } else {
+      break
+    }
+  }
+  const result = lines.slice(reqStart).join('\n').trim()
+  // Safety: if we stripped everything, return the original
+  return result.length > 20 ? result : text
+}
 
 function parseSubRequirements(text, reqNum) {
   if (!text) return { intro: '', subs: [], measure: null }
@@ -141,10 +161,11 @@ function parseSubRequirements(text, reqNum) {
     const contentStart = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
     const contentEnd = i + 1 < matches.length ? matches[i + 1].index : parseText.length
     let subText = parseText.slice(contentStart, contentEnd).trim()
-    // Strip evidence/measures column text from Format B table rows.
-    // Evidence text always starts with a recognizable phrase.
+    // Strip evidence/measures column text (Format B table rows).
     const evidenceIdx = subText.search(/\bexamples? of (?:acceptable )?evidence\b|\bAn example of evidence\b|\bAcceptable evidence\b/i)
     if (evidenceIdx > 30) subText = subText.slice(0, evidenceIdx).trim()
+    // Strip "Applicable Systems" column text that precedes requirement language (Format B).
+    if (isTableFormat) subText = stripApplicableSystems(subText)
     return { id: match.id, text: cleanText(subText) }
   })
 
