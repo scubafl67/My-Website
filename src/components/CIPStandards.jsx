@@ -36,8 +36,9 @@ function extractRequirement(text, label) {
   if (!start) return null
   const from = start.index + (start[0].startsWith('\n') ? 1 : 0)
   const rest = text.slice(from + 2)
-  // Stop at the next requirement header only (not at M1. which precedes table rows)
-  const end = /\n\s*R\d+\.(?!\d)/.exec(rest)
+  // Stop at: next requirement, compliance section (C1./C.), VSL tables,
+  // or any of the standard's back-matter section headers.
+  const end = /\n\s*(?:R\d+\.(?!\d)|C\.?\s|C\d+\.\s|Compliance\s|Violation Severity Level|Table of Compliance|Associated Documents|Regional Variances|Interpretations|Supplemental Material|D\.\s+Regional|E\.\s+Interpretations)/.exec(rest)
   const body = text.slice(from, end ? from + 2 + end.index : text.length).trim()
   // Normalize AFTER extraction — preserves the structural newlines needed above
   return body.length > 10 ? normalizeSpacing(body) : null
@@ -51,8 +52,8 @@ function extractMeasure(text, reqNum) {
   if (!start) return null
   const from = start.index + (start[0].startsWith('\n') ? 1 : 0)
   const rest = text.slice(from)
-  // Stop at next M or R header
-  const end = new RegExp(`\\n\\s*(?:M\\d+|R\\d+)\\.(?!\\d)`).exec(rest.slice(1))
+  // Stop at next M/R header or any compliance back-matter section
+  const end = /\n\s*(?:M\d+\.|R\d+\.(?!\d)|C\.?\s|C\d+\.\s|Compliance\s|Violation Severity Level|Table of Compliance|Associated Documents|Regional Variances|Interpretations|Supplemental Material)/.exec(rest.slice(1))
   const body = end ? rest.slice(0, 1 + end.index).trim() : rest.trim()
   return body.length > 5 ? normalizeSpacing(body) : null
 }
