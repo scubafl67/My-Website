@@ -228,7 +228,8 @@ function parseSubRequirements(text, reqNum) {
       const isContinuation = !sub.applicableSystems && CONTINUATION.test(sub.text)
       if (isContinuation && finalSubs.length > 0) {
         const prev = finalSubs[finalSubs.length - 1]
-        prev.text = (prev.text + ' ' + sub.text).trim()
+        // Re-insert the sub ID inline so cross-references like "Part 4.1" are preserved
+        prev.text = (prev.text + ' ' + sub.id + ' ' + sub.text).trim()
         if (!prev.partMeasure && sub.partMeasure) prev.partMeasure = sub.partMeasure
       } else {
         finalSubs.push({ ...sub })
