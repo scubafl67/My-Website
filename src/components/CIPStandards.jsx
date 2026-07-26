@@ -98,11 +98,13 @@ function extractMeasure(text, reqNum) {
 // For Format B, the "Applicable Systems" column text (lists of system category
 // names) is stripped from each sub-part row, leaving only the requirement language.
 
-// Lines that belong to the "Applicable Systems" column in Format B tables.
+// Lines belonging to the "Applicable Systems" column in Format B tables.
 const SYS_LINE = /^(?:\s*\d+\.\s*)?(?:High\s+Impact|Medium\s+Impact|Low\s+Impact|EACMS|PACS|PCA|Electronic\s+Access|Physical\s+Access|BES\s+Cyber|All\s+applicable\s+Cyber|and\s+their\s+associated|with\s+(?:External|Internal)|without\s+External|Control\s+Center|Generation\s+(?:at|Resources)|Transmission\s+(?:Owner|stations)|Communication\s+Links)/i
 const CONNECTOR_ONLY = /^[\s;,]*(?:and|or|\d+\.)\s*$/i
 
-function stripApplicableSystems(text) {
+// Separate "Applicable Systems" preamble from requirement text in a Format B row.
+// Returns { applicableSystems, reqText }.
+function separateApplicableSystems(text) {
   const lines = text.split('\n')
   let reqStart = 0
   for (let i = 0; i < lines.length; i++) {
@@ -113,9 +115,32 @@ function stripApplicableSystems(text) {
       break
     }
   }
-  const result = lines.slice(reqStart).join('\n').trim()
-  // Safety: if we stripped everything, return the original
-  return result.length > 20 ? result : text
+  if (reqStart === 0) return { applicableSystems: null, reqText: text }
+  const applicableSystems = cleanText(lines.slice(0, reqStart).join('\n'))
+  const reqText = lines.slice(reqStart).join('\n').trim()
+  // Safety: if separation removed everything, treat whole text as requirement
+  return reqText.length > 20
+    ? { applicableSystems, reqText }
+    : { applicableSystems: null, reqText: text }
+}
+
+// Parse sub-sub-requirements (e.g. 1.1.1, 1.1.2) within a sub-part's requirement text.
+function parseSubSubs(text, parentId) {
+  const escaped = parentId.replace(/\./g, '\\.')
+  const pat = new RegExp(`(?:^|\\n)[ \\t]*(${escaped}\\.\\d+)[ \\t]*[.:]?(?:[ \\t]+|\\n)`, 'g')
+  const matches = []
+  let m
+  while ((m = pat.exec(text)) !== null) {
+    matches.push({ id: m[1], index: m.index === 0 ? 0 : m.index + 1, matchLen: m[0].length })
+  }
+  if (matches.length === 0) return { introText: text, subSubs: [] }
+  const introText = text.slice(0, matches[0].index).trim()
+  const subSubs = matches.map((match, i) => {
+    const start = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
+    const end = i + 1 < matches.length ? matches[i + 1].index : text.length
+    return { id: match.id, text: cleanText(text.slice(start, end).trim()) }
+  })
+  return { introText, subSubs }
 }
 
 function parseSubRequirements(text, reqNum) {
@@ -161,12 +186,33 @@ function parseSubRequirements(text, reqNum) {
     const contentStart = match.index + match.matchLen - (match.index === 0 ? 0 : 1)
     const contentEnd = i + 1 < matches.length ? matches[i + 1].index : parseText.length
     let subText = parseText.slice(contentStart, contentEnd).trim()
-    // Strip evidence/measures column text (Format B table rows).
+
+    // Separate per-part measure (evidence text) from the tail of the row.
+    let partMeasure = null
     const evidenceIdx = subText.search(/\bexamples? of (?:acceptable )?evidence\b|\bAn example of evidence\b|\bAcceptable evidence\b/i)
-    if (evidenceIdx > 30) subText = subText.slice(0, evidenceIdx).trim()
-    // Strip "Applicable Systems" column text that precedes requirement language (Format B).
-    if (isTableFormat) subText = stripApplicableSystems(subText)
-    return { id: match.id, text: cleanText(subText) }
+    if (evidenceIdx > 30) {
+      partMeasure = cleanText(subText.slice(evidenceIdx).trim())
+      subText = subText.slice(0, evidenceIdx).trim()
+    }
+
+    // For Format B: separate Applicable Systems preamble from requirement text.
+    let applicableSystems = null
+    if (isTableFormat) {
+      const separated = separateApplicableSystems(subText)
+      applicableSystems = separated.applicableSystems
+      subText = separated.reqText
+    }
+
+    // Parse sub-sub-requirements (1.1.1, 1.1.2, …) within the requirement text.
+    const { introText, subSubs } = parseSubSubs(subText, match.id)
+
+    return {
+      id: match.id,
+      applicableSystems,
+      text: cleanText(introText || subText),
+      subSubs,
+      partMeasure,
+    }
   })
 
   return { intro, subs, measure }
@@ -373,19 +419,55 @@ export default function CIPStandards() {
                 )
 
                 if (subs.length > 0) {
+                  const labelStyle = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '0.3rem' }
                   return (
                     <div>
                       {intro && (
                         <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, margin: '0 0 1.25rem', whiteSpace: 'pre-wrap' }}>{intro}</p>
                       )}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {subs.map((sub) => (
-                          <div
-                            key={sub.id}
-                            style={{ display: 'flex', gap: '0.875rem', background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.18)', borderRadius: 8, padding: '0.75rem 1rem' }}
-                          >
-                            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 36, paddingTop: '0.15rem' }}>{sub.id}</span>
-                            <span style={{ fontSize: '0.8375rem', color: 'rgba(255,255,255,0.82)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{sub.text}</span>
+                          <div key={sub.id} style={{ background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.18)', borderRadius: 8, padding: '0.875rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+                            {/* Part ID */}
+                            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-signal)' }}>{sub.id}</span>
+
+                            {/* Applicable Systems */}
+                            {sub.applicableSystems && (
+                              <div>
+                                <div style={labelStyle}>Applicable Systems</div>
+                                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.55, margin: 0, whiteSpace: 'pre-wrap' }}>{sub.applicableSystems}</p>
+                              </div>
+                            )}
+
+                            {/* Requirements */}
+                            <div>
+                              <div style={labelStyle}>Requirements</div>
+                              {sub.text && (
+                                <p style={{ fontSize: '0.8375rem', color: 'rgba(255,255,255,0.88)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{sub.text}</p>
+                              )}
+                              {sub.subSubs && sub.subSubs.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: sub.text ? '0.625rem' : 0 }}>
+                                  {sub.subSubs.map((ss) => (
+                                    <div key={ss.id} style={{ display: 'flex', gap: '0.75rem', background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.15)', borderRadius: 6, padding: '0.55rem 0.75rem' }}>
+                                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 38, paddingTop: '0.1rem' }}>{ss.id}</span>
+                                      <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.82)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{ss.text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Per-part Measures */}
+                            {sub.partMeasure && (
+                              <div>
+                                <div style={labelStyle}>Measures</div>
+                                <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(0,168,204,0.06)', border: '1px solid rgba(0,168,204,0.15)', borderRadius: 6, padding: '0.55rem 0.75rem' }}>
+                                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-signal)', whiteSpace: 'nowrap', minWidth: 38, paddingTop: '0.1rem' }}>M{sub.id}</span>
+                                  <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{sub.partMeasure}</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
