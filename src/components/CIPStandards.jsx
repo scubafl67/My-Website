@@ -495,7 +495,6 @@ export default function CIPStandards() {
                             </tbody>
                           </table>
                         </div>
-                        {measureBlock}
                       </div>
                     )
                   }
