@@ -4,8 +4,6 @@ import yaml
 import anthropic
 from agent.prompts.system_prompt import build_system_prompt
 from agent.tools import TOOL_DEFINITIONS, execute_tool
-from profiles.teammate_store import TeammateStore
-from profiles.iq_tracker import IQTracker
 from config.settings import MODEL, USE_SUPABASE
 
 
@@ -22,7 +20,9 @@ class CIPGuardOrchestrator:
             from config.settings import SUPABASE_URL, SUPABASE_SERVICE_KEY
             self.teammate_store = SupabaseTeammateStore(SUPABASE_URL, SUPABASE_SERVICE_KEY)
         else:
+            from profiles.teammate_store import TeammateStore
             self.teammate_store = TeammateStore()
+        from profiles.iq_tracker import IQTracker
         self.iq_tracker = IQTracker(self.teammate_store)
         self.conversation_history = []
 

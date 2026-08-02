@@ -1,10 +1,12 @@
-from profiles.teammate_store import TeammateStore
 from datetime import datetime, timezone
 
 
 class IQTracker:
-    def __init__(self, store: TeammateStore = None):
-        self.store = store or TeammateStore()
+    def __init__(self, store=None):
+        if store is None:
+            from profiles.teammate_store import TeammateStore
+            store = TeammateStore()
+        self.store = store
 
     def update_iq(self, teammate_id: str, standard_id: str, delta: float, reason: str) -> dict:
         profile = self.store.get(teammate_id)

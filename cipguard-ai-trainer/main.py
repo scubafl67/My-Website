@@ -29,7 +29,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config.settings import DEFAULT_DOMAIN
-from agent.core_functions.reassessment_trigger import MINIMUM_INTERVAL_DAYS
 
 
 def cmd_ingest(args):
@@ -152,7 +151,7 @@ def cmd_report(args):
             print(json.dumps(report, indent=2))
 
     elif report_type == "growth":
-        from agent.core_functions.reassessment_trigger import ReassessmentTrigger
+        from agent.core_functions.reassessment_trigger import ReassessmentTrigger, MINIMUM_INTERVAL_DAYS
         trigger = ReassessmentTrigger(domain)
         if args.teammate:
             trigger.print_growth_report(args.teammate)
