@@ -26,12 +26,19 @@ export function AuthProvider({ children }) {
     session,
     user: session?.user ?? null,
     loading,
-    signIn: (email, password, captchaToken) =>
-      supabase.auth.signInWithPassword({
-        email,
-        password,
-        options: captchaToken ? { captchaToken } : undefined,
-      }),
+    signIn: async (email, password, captchaToken) => {
+      // Route through rate-limited proxy — enforces lockout and breach alerts
+      const res = await fetch("/.netlify/functions/login", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ email, password, captchaToken }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: { message: data.error ?? "Sign-in failed." } };
+      // Hydrate the Supabase client with the session returned by the proxy
+      const { error } = await supabase.auth.setSession(data.session);
+      return { error };
+    },
     signUp: (email, password, fullName, captchaToken) =>
       supabase.auth.signUp({
         email,
