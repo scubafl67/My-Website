@@ -1,8 +1,6 @@
 [build]
-builder = "nixpacks"
-
-[build.nixpacks]
-pkgs = ["python311"]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "python main.py serve --port ${PORT:-8000}"
