@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useAuth } from './context/AuthContext'
 import CIPStandards from './components/CIPStandards'
 import KnowledgeBase from './components/KnowledgeBase'
+import MyBaseline from './components/MyBaseline'
 import ProfilePanel from './components/ProfilePanel'
 
 // Authenticated view: NERC CIP connector content + weather + profile.
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const tabs = [
     { id: 'standards', label: 'CIP Standards' },
     { id: 'knowledge', label: 'Knowledge Base' },
+    { id: 'baseline', label: 'My Baseline' },
     { id: 'profile', label: 'Profile' },
     { id: 'audit', label: 'BES Audit' },
   ]
@@ -74,6 +76,7 @@ export default function Dashboard() {
         {tab === 'standards' && <CIPStandards />}
 	{tab === 'audit' && <AuditLauncher />}
         {tab === 'knowledge' && <KnowledgeBase />}
+        {tab === 'baseline' && <MyBaseline />}
         {tab === 'profile' && (
           <div style={{ maxWidth: 720 }}>
             <ProfilePanel />

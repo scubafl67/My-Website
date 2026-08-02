@@ -22,11 +22,21 @@ export function AuthProvider({ children }) {
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  const isLocalDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
   const value = {
     session,
     user: session?.user ?? null,
     loading,
     signIn: async (email, password, captchaToken) => {
+      if (isLocalDev) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+          options: captchaToken ? { captchaToken } : undefined,
+        })
+        return { error }
+      }
       // Route through rate-limited proxy — enforces lockout and breach alerts
       const res = await fetch("/.netlify/functions/login", {
         method:  "POST",

@@ -7,8 +7,13 @@ import { supabase } from '../lib/supabase'
 // Set VITE_TURNSTILE_SITE_KEY in .env (local) and in Netlify environment variables.
 // Falls back to Cloudflare's always-FAIL test key so a missing env var is obvious
 // rather than silently bypassing the check.
-const TURNSTILE_SITE_KEY =
-  import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000BB'
+const IS_LOCAL_DEV = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+
+// On localhost use Cloudflare's "always passes" invisible test key so the
+// captcha resolves instantly without needing a real Cloudflare connection.
+const TURNSTILE_SITE_KEY = IS_LOCAL_DEV
+  ? '1x00000000000000000000AA'
+  : (import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000BB')
 
 // Auth modal with three modes: sign in, sign up, and two-secret password reset.
 // Gates all NERC CIP content behind a CIPGuard account.
