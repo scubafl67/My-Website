@@ -10,7 +10,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///profiles/teammates.db")
 VECTORSTORE_DIR = os.getenv("VECTORSTORE_DIR", "data/vectorstore/db")
 DEFAULT_DOMAIN = os.getenv("DEFAULT_DOMAIN", "nerc_cip")
 
-VOICE_ENABLED = os.getenv("VOICE_ENABLED", "true").lower() in ("true", "1", "yes")
+VOICE_ENABLED = os.getenv("VOICE_ENABLED", "false").lower() in ("true", "1", "yes")
 STT_ENGINE = os.getenv("STT_ENGINE", "granite")
 TTS_ENGINE = os.getenv("TTS_ENGINE", "kokoro")
 
