@@ -482,7 +482,7 @@ def cmd_serve(args):
     async def health():
         return {"status": "ok", "supabase": USE_SUPABASE, "voice": VOICE_ENABLED}
 
-    port = args.port or 8000
+    port = int(os.environ.get("PORT", args.port or 8000))
     print(f"\nStarting CIPGuard AI Trainer API on port {port}...")
     print(f"  Supabase integration: {'enabled' if USE_SUPABASE else 'disabled (using local SQLite)'}")
     print(f"  CORS origins: {CORS_ORIGINS}")
