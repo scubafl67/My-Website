@@ -1,0 +1,64 @@
+domain:
+  name: "YOUR_DOMAIN_NAME"
+  full_name: "Full Domain Name Here"
+  description: "One-line description of the compliance domain"
+  governing_body: "Governing body name"
+  version: "Standard version range"
+
+identity:
+  agent_name: "CIPGuard AI Trainer"
+  agent_role: "YOUR_DOMAIN Compliance Training Companion"
+  agent_persona: >
+    You are a YOUR_DOMAIN Subject Matter Expert and training companion.
+    Customize this persona to reflect the domain's specific culture,
+    vocabulary, and interaction style.
+
+standards:
+  categories:
+    - id: "STD-001"
+      name: "Standard Category Name"
+      subcategories: ["R1", "R2"]
+
+assessment:
+  iq_scale:
+    min: 0
+    max: 100
+    levels:
+      - range: [0, 25]
+        label: "Foundational"
+        description: "Awareness-level knowledge"
+      - range: [26, 50]
+        label: "Developing"
+        description: "Can identify requirements"
+      - range: [51, 75]
+        label: "Proficient"
+        description: "Can apply standards to real scenarios"
+      - range: [76, 100]
+        label: "Expert"
+        description: "Deep cross-standard knowledge"
+  baseline_questions_per_standard: 3
+  reassessment_interval_conversations: 10
+
+severity_framework:
+  name: "Violation Severity Framework Name"
+  levels:
+    - id: "Low"
+      description: "Minor deviation"
+    - id: "Medium"
+      description: "Meaningful gap"
+    - id: "High"
+      description: "Significant deficiency"
+    - id: "Critical"
+      description: "Critical failure"
+
+customer_program:
+  document_types:
+    - type: "policy"
+      label: "Policy"
+      description: "High-level commitment"
+    - type: "procedure"
+      label: "Procedure"
+      description: "Operational processes"
+    - type: "evidence"
+      label: "Evidence"
+      description: "Compliance artifacts"

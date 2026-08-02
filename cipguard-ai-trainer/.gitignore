@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+*.db
+data/vectorstore/db/
+data/ingestion/baselines/
+data/ingestion/version_history/
+data/logs/
+data/reports/
+data/sources/
+profiles/teammates.db
+.venv/
+venv/

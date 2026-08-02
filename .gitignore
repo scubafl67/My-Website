@@ -26,3 +26,12 @@ audit-server/.env
 
 # Local Netlify folder
 .netlify
+
+# AI Trainer
+cipguard-ai-trainer/.env
+cipguard-ai-trainer/__pycache__/
+cipguard-ai-trainer/**/__pycache__/
+cipguard-ai-trainer/*.db
+cipguard-ai-trainer/data/vectorstore/db/
+cipguard-ai-trainer/data/logs/
+cipguard-ai-trainer/.venv/

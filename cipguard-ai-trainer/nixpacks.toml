@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = ["pip install -r requirements-deploy.txt"]
+
+[start]
+cmd = "python main.py serve --port ${PORT:-8000}"

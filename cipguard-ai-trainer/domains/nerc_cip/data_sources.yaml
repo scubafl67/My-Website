@@ -1,0 +1,80 @@
+crawl_sources:
+  - url: "https://www.nerc.com/pa/Stand/Pages/CIPStandards.aspx"
+    description: "Official NERC CIP Standards page"
+    depth: 3
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/comp/Pages/default.aspx"
+    description: "NERC Compliance & Enforcement"
+    depth: 2
+    frequency: "monthly"
+
+  - url: "https://www.ferc.gov/industries-data/electric/industry-activities/critical-infrastructure-protection"
+    description: "FERC CIP oversight and orders"
+    depth: 2
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/comp/CE/Pages/Enforcement-and-Mitigation.aspx"
+    description: "Enforcement actions and penalty data"
+    depth: 2
+    frequency: "quarterly"
+
+  - url: "https://www.nerc.com/pa/rrm/Pages/Lessons-Learned.aspx"
+    description: "NERC Lessons Learned"
+    depth: 2
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/Stand/Pages/Project-2016-02-Modifications-to-CIP-Standards.aspx"
+    description: "Project 2016-02 — Virtualization (FERC Order 919)"
+    depth: 3
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/Stand/Pages/Project-2022-02-Modifications-to-CIP-005-and-CIP-010.aspx"
+    description: "Project 2022-02 — INSM / CIP-015"
+    depth: 3
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/Stand/Pages/Project-2023-04-Modifications-to-CIP-003.aspx"
+    description: "Project 2023-04 — CIP-003-11 Low-Impact Controls (FERC Order 918)"
+    depth: 3
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/Stand/Pages/Project-2025-02-Modifications-to-CIP-015.aspx"
+    description: "Project 2025-02 — CIP-015-2 Expanded INSM"
+    depth: 3
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/Stand/Pages/Project-2025-06-Supply-Chain.aspx"
+    description: "Project 2025-06 — CIP-013-4 / CIP-010-6 Supply Chain (FERC Order 912)"
+    depth: 3
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/Stand/Pages/Project-2023-09-Cloud-Services.aspx"
+    description: "Project 2023-09 — CIP 100-Series Cloud Services"
+    depth: 3
+    frequency: "monthly"
+
+  - url: "https://www.nerc.com/pa/Stand/Pages/ReliabilityStandardsUnitedStates.aspx"
+    description: "All NERC Reliability Standards (US) — master list"
+    depth: 2
+    frequency: "monthly"
+
+  - url: "https://www.ferc.gov/media/order-no-919"
+    description: "FERC Order 919 — Virtualization Standards approval"
+    depth: 1
+    frequency: "quarterly"
+
+  - url: "https://www.ferc.gov/media/order-no-918"
+    description: "FERC Order 918 — CIP-003-11 Low-Impact Controls approval"
+    depth: 1
+    frequency: "quarterly"
+
+  - url: "https://www.ferc.gov/media/order-no-912"
+    description: "FERC Order 912 — Supply Chain Risk Management expansion"
+    depth: 1
+    frequency: "quarterly"
+
+document_sources:
+  - path: "data/sources/"
+    types: ["pdf", "docx", "xlsx", "txt", "html"]
+    description: "Customer-provided program documentation"

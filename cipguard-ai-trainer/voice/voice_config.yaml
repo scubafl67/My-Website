@@ -1,0 +1,105 @@
+voice:
+  enabled: true
+  mode: "bidirectional"
+
+stt:
+  engine: "granite"
+  engines:
+    granite:
+      model: "ibm-granite/granite-speech-4.1-2b"
+      description: "IBM Granite Speech 4.1 2B — highest accuracy (5.33% WER), Apache 2.0"
+      streaming: true
+      keyword_biasing: true
+      domain_keywords:
+        - "BES Cyber System"
+        - "Electronic Security Perimeter"
+        - "Physical Security Perimeter"
+        - "Electronic Access Point"
+        - "EACMS"
+        - "PACS"
+        - "BCSI"
+        - "CIP Senior Manager"
+        - "Violation Severity Level"
+        - "VSL"
+        - "Shared Cyber Infrastructure"
+        - "Virtual Cyber Asset"
+        - "INSM"
+        - "Transient Cyber Asset"
+      sample_rate: 16000
+      language: "en"
+
+    moonshine:
+      model: "moonshine-ai/moonshine-v2-base"
+      description: "Moonshine v2 — edge-optimized, 27MB minimum, MIT license"
+      streaming: true
+      keyword_biasing: false
+      sample_rate: 16000
+      language: "en"
+
+    parakeet:
+      model: "nvidia/parakeet-tdt-0.6b-v2"
+      description: "NVIDIA Parakeet TDT — fastest throughput (RTFx 3333), CC-BY-4.0"
+      streaming: true
+      keyword_biasing: false
+      sample_rate: 16000
+      language: "en"
+
+    whisper:
+      model: "openai/whisper-large-v3"
+      description: "OpenAI Whisper Large v3 — 99+ languages, MIT license"
+      streaming: false
+      keyword_biasing: false
+      sample_rate: 16000
+      language: "en"
+
+    cohere:
+      model: "CohereForAI/transcribe-v2-2b"
+      description: "Cohere Transcribe 2B — 14 languages, Apache 2.0"
+      streaming: false
+      keyword_biasing: false
+      sample_rate: 16000
+      language: "en"
+
+    qwen:
+      model: "Qwen/Qwen3-ASR-1.7B"
+      description: "Qwen3-ASR — 52 languages with timestamps, Apache 2.0"
+      streaming: true
+      keyword_biasing: false
+      sample_rate: 16000
+      language: "en"
+
+tts:
+  engine: "kokoro"
+  engines:
+    kokoro:
+      model: "hexgrad/Kokoro-82M"
+      description: "Kokoro 82M — Apache 2.0, CPU-capable, natural narration"
+      voice: "af_heart"
+      speed: 1.0
+      sample_rate: 24000
+
+    chatterbox:
+      model: "resemble-ai/chatterbox-0.5b"
+      description: "Chatterbox 0.5B — MIT, most natural voice, voice cloning capable"
+      voice: "default"
+      speed: 1.0
+      sample_rate: 24000
+
+    piper:
+      model: "rhasspy/piper"
+      description: "Piper — MIT, ultra-lightweight for edge/IoT"
+      voice: "en_US-lessac-medium"
+      speed: 1.0
+      sample_rate: 22050
+
+vad:
+  engine: "silero"
+  threshold: 0.5
+  min_speech_duration_ms: 250
+  min_silence_duration_ms: 300
+
+pipeline:
+  chunk_duration_ms: 500
+  max_turn_duration_s: 30
+  interruption_enabled: true
+  audio_format: "pcm_s16le"

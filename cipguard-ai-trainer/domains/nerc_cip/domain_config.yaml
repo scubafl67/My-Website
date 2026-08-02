@@ -1,0 +1,480 @@
+domain:
+  name: "NERC CIP"
+  full_name: "North American Electric Reliability Corporation Critical Infrastructure Protection"
+  description: "Cybersecurity standards for the bulk electric system"
+  governing_body: "NERC (enforced by FERC)"
+  version: "CIP-002 through CIP-015 (including virtualization and cloud standards)"
+  last_updated: "2026-08-01"
+
+identity:
+  agent_name: "CIPGuard AI Trainer"
+  agent_role: "NERC CIP Compliance Training Companion"
+  agent_persona: >
+    You are a NERC CIP Subject Matter Expert and training companion.
+    You help utility compliance team members deepen their understanding
+    of CIP standards through Socratic dialogue, options-based learning,
+    and continuous assessment of their CIP IQ. You are thorough, patient,
+    and always ground your answers in the actual standard requirements.
+    You track which source answered each question and cite specific
+    requirement numbers in every correction or definitive answer.
+
+standards:
+  # ═══════════════════════════════════════════════════════════════
+  # TIER 1 — CURRENTLY MANDATORY / ENFORCEABLE (as of August 2026)
+  # ═══════════════════════════════════════════════════════════════
+  currently_enforced:
+    - id: "CIP-002"
+      version: "CIP-002-5.1a"
+      name: "BES Cyber System Categorization"
+      status: "mandatory"
+      requirements: ["R1", "R2"]
+      requirement_details:
+        R1: "Identify and categorize BES Cyber Systems as High/Medium/Low using Attachment 1 criteria"
+        R2: "Review and approve categorizations every 15 months"
+
+    - id: "CIP-003"
+      version: "CIP-003-9"
+      name: "Security Management Controls"
+      status: "mandatory"
+      effective_date: "2026-04-01"
+      nerc_project: "2016-02"
+      requirements: ["R1", "R2", "R3", "R4"]
+      requirement_details:
+        R1: "Documented cyber security policies for High/Medium and Low impact BCS, approved every 15 months"
+        R2: "Implement documented cyber security plans per Attachment 1 for Low impact BCS"
+        R3: "CIP Senior Manager identified by name, changes documented within 30 days"
+        R4: "Delegation of authority process"
+      notes: "Replaced CIP-003-8. Extended governance into low-impact; formalized vendor electronic remote access controls (R1 Part 1.2.6)"
+
+    - id: "CIP-004"
+      version: "CIP-004-7"
+      name: "Personnel & Training"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3", "R4", "R5", "R6"]
+      requirement_details:
+        R1: "Security awareness program, reinforced quarterly"
+        R2: "Role-based cyber security training before granting access"
+        R3: "Personnel Risk Assessment with identity verification and criminal history checks every 7 years"
+        R4: "Access management program"
+        R5: "Access revocation within 24 hours of termination"
+        R6: "Access management for BES Cyber System Information (BCSI)"
+
+    - id: "CIP-005"
+      version: "CIP-005-7"
+      name: "Electronic Security Perimeter(s)"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3"]
+      requirement_details:
+        R1: "All applicable BCS within defined ESP; external connectivity only through Electronic Access Points (EAP)"
+        R2: "Interactive Remote Access via Intermediate System with encryption and multi-factor authentication"
+        R3: "Vendor remote access monitoring and disable capability"
+
+    - id: "CIP-006"
+      version: "CIP-006-6"
+      name: "Physical Security of BES Cyber Systems"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3"]
+      requirement_details:
+        R1: "Physical Security Plan defining PSPs, access control, monitoring, logging with 90-day retention"
+        R2: "Visitor control with continuous escort and logging"
+        R3: "Maintenance and testing of physical access control systems every 24 months"
+
+    - id: "CIP-007"
+      version: "CIP-007-6"
+      name: "System Security Management"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3", "R4", "R5"]
+      requirement_details:
+        R1: "Ports and services — only necessary logical ports enabled"
+        R2: "Patch management with 35-day evaluation"
+        R3: "Malicious code prevention"
+        R4: "Security event monitoring with 90-day log retention and 15-day review cycles"
+        R5: "System access controls with authentication and account management"
+
+    - id: "CIP-008"
+      version: "CIP-008-6"
+      name: "Incident Reporting and Response Planning"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3"]
+      requirement_details:
+        R1: "Cyber Security Incident Response Plan"
+        R2: "Plan tested every 15 months with lessons learned"
+        R3: "Report Reportable Cyber Security Incidents to E-ISAC and CISA within 1 hour"
+
+    - id: "CIP-009"
+      version: "CIP-009-6"
+      name: "Recovery Plans for BES Cyber Systems"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3"]
+      requirement_details:
+        R1: "Recovery plan with activation conditions, roles, backup storage"
+        R2: "Test recovery plans every 15 months; verify restoration every 36 months for High"
+        R3: "Update recovery plans within 90 days of test or actual recovery"
+
+    - id: "CIP-010"
+      version: "CIP-010-4"
+      name: "Configuration Change Management and Vulnerability Assessments"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3", "R4"]
+      requirement_details:
+        R1: "Baseline configurations documented; changes authorized; updated within 30 days"
+        R2: "Monitor for unauthorized baseline changes every 35 days for High"
+        R3: "Vulnerability assessment every 15 months; active assessment every 36 months for High"
+        R4: "Transient Cyber Assets and Removable Media risk management"
+
+    - id: "CIP-011"
+      version: "CIP-011-3"
+      name: "Information Protection"
+      status: "mandatory"
+      requirements: ["R1", "R2"]
+      requirement_details:
+        R1: "Information protection program for BCSI in storage, transit, and use"
+        R2: "Prevent unauthorized retrieval before reuse; render unrecoverable before disposal"
+
+    - id: "CIP-012"
+      version: "CIP-012-2"
+      name: "Communications Between Control Centers"
+      status: "mandatory"
+      effective_date: "2026-07-01"
+      requirements: ["R1"]
+      requirement_details:
+        R1: "Plan to mitigate risks of unauthorized disclosure, modification, and loss of availability of Real-time Assessment/monitoring data between Control Centers"
+      notes: "Added availability protections (Part 1.2) and recovery of lost communication links (Part 1.3) beyond original confidentiality/integrity focus"
+
+    - id: "CIP-013"
+      version: "CIP-013-2"
+      name: "Supply Chain Risk Management"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3"]
+      requirement_details:
+        R1: "Supply chain cyber security risk management plan addressing procurement, vendor notifications, vulnerability disclosure, software verification, remote access"
+        R2: "Implement plan for High and Medium BCS procurements"
+        R3: "CIP Senior Manager approves plan every 15 months"
+
+    - id: "CIP-014"
+      version: "CIP-014-3"
+      name: "Physical Security (Transmission Stations/Substations)"
+      status: "mandatory"
+      requirements: ["R1", "R2", "R3", "R4", "R5", "R6"]
+      requirement_details:
+        R1: "Risk assessment identifying critical stations"
+        R2: "Third-party verification of risk assessment"
+        R3: "Notification to primary control center Transmission Operator"
+        R4: "Evaluate physical threats and vulnerabilities"
+        R5: "Develop and implement physical security plans"
+        R6: "Third-party review of evaluation and plan"
+
+    - id: "CIP-015"
+      version: "CIP-015-1"
+      name: "Internal Network Security Monitoring (INSM)"
+      status: "mandatory"
+      effective_date: "2025-09-02"
+      nerc_project: "2022-02"
+      requirements: ["R1", "R2", "R3"]
+      requirement_details:
+        R1: "Implement INSM for networks within ESP — network data feeds (Part 1.1), anomalous activity detection methods (Part 1.2), evaluation and action determination (Part 1.3)"
+        R2: "Retain INSM data for anomalous activity until investigation complete"
+        R3: "Protect INSM data from unauthorized deletion or modification"
+      compliance_deadlines:
+        high_medium_with_erc: "2028-10-01"
+        all_other_with_erc: "2030-10-01"
+      notes: "Phased compliance — High/Medium BCS with ERC by Oct 2028; all others by Oct 2030"
+
+  # ═══════════════════════════════════════════════════════════════
+  # TIER 2 — EFFECTIVE WITHIN 12 MONTHS / EARLY ADOPTION WINDOW
+  # These are approved and effective but mandatory compliance is
+  # future-dated. Entities may begin early adoption now.
+  # ═══════════════════════════════════════════════════════════════
+  upcoming_within_12_months:
+    ferc_order_919_virtualization:
+      description: "FERC Order 919 — Virtualization Reliability Standards (Project 2016-02)"
+      ferc_order: "919"
+      effective_date: "2026-05-26"
+      mandatory_compliance_date: "2028-07-01"
+      early_adoption_windows:
+        - "2026-11-26"
+        - "2027-05-26"
+        - "2027-11-26"
+      key_changes:
+        - "Introduces Shared Cyber Infrastructure (SCI) and Virtual Cyber Asset (VCA) definitions"
+        - "4 new NERC Glossary definitions; 18 modified definitions"
+        - "Replaces Technical Feasibility Exception (TFE) with self-implementing 'per system capability' exception"
+        - "Enables zero-trust and micro-segmentation approaches"
+      standards:
+        - id: "CIP-002"
+          version: "CIP-002-7"
+          replaces: "CIP-002-5.1a"
+          name: "BES Cyber System Categorization"
+          key_change: "Accommodates virtualized BES Cyber Systems"
+        - id: "CIP-003"
+          version: "CIP-003-10"
+          replaces: "CIP-003-9"
+          name: "Security Management Controls"
+          key_change: "Conforming changes for virtualization"
+        - id: "CIP-004"
+          version: "CIP-004-8"
+          replaces: "CIP-004-7"
+          name: "Personnel & Training"
+          key_change: "Training/personnel updates for virtual environments"
+        - id: "CIP-005"
+          version: "CIP-005-8"
+          replaces: "CIP-005-7"
+          name: "Electronic Security Perimeter(s)"
+          key_change: "Replaces perimeter-based model; allows zero-trust and micro-segmentation"
+        - id: "CIP-006"
+          version: "CIP-006-7.1"
+          replaces: "CIP-006-6"
+          name: "Physical Security of BES Cyber Systems"
+          key_change: "Physical security accommodations for virtualized assets"
+        - id: "CIP-007"
+          version: "CIP-007-7.1"
+          replaces: "CIP-007-6"
+          name: "System Security Management"
+          key_change: "System security for virtual and shared infrastructure"
+        - id: "CIP-008"
+          version: "CIP-008-7.1"
+          replaces: "CIP-008-6"
+          name: "Incident Reporting and Response Planning"
+          key_change: "Incident response for virtualized environments"
+        - id: "CIP-009"
+          version: "CIP-009-7.1"
+          replaces: "CIP-009-6"
+          name: "Recovery Plans for BES Cyber Systems"
+          key_change: "Recovery plans for virtualized environments"
+        - id: "CIP-010"
+          version: "CIP-010-5"
+          replaces: "CIP-010-4"
+          name: "Configuration Change Management and Vulnerability Assessments"
+          key_change: "Configuration management for virtualized environments"
+        - id: "CIP-011"
+          version: "CIP-011-4.1"
+          replaces: "CIP-011-3"
+          name: "Information Protection"
+          key_change: "Information protection updates for virtualization"
+        - id: "CIP-013"
+          version: "CIP-013-3"
+          replaces: "CIP-013-2"
+          name: "Supply Chain Risk Management"
+          key_change: "Supply chain management for virtualized environments"
+
+  # ═══════════════════════════════════════════════════════════════
+  # TIER 3 — APPROVED / FUTURE-DATED (Beyond August 2027)
+  # ═══════════════════════════════════════════════════════════════
+  approved_future_enforcement:
+    - id: "CIP-003"
+      version: "CIP-003-11"
+      name: "Security Management Controls (Low-Impact)"
+      ferc_order: "918"
+      nerc_project: "2023-04"
+      effective_date: "2026-05-26"
+      mandatory_compliance_date: "2029-07-01"
+      key_changes:
+        - "Remote user authentication for low-impact BES Cyber Systems"
+        - "Protection of authentication credentials in transit"
+        - "Detection of malicious communications on externally routable low-impact systems"
+
+    - id: "CIP-015"
+      version: "CIP-015-2"
+      name: "Internal Network Security Monitoring — Expanded Scope"
+      nerc_project: "2025-02"
+      status: "NERC Board adopted 2026-06-17; FERC approval pending"
+      mandatory_compliance_date: "TBD — pending FERC approval"
+      key_changes:
+        - "Extends INSM monitoring beyond ESP to include EACMS, PACS, and Shared Cyber Infrastructure (SCI)"
+        - "Aligns with virtualization terminology (uses 'Cyber Systems' language)"
+        - "Responds to FERC Order 907 directive"
+
+    - id: "CIP-002"
+      version: "CIP-002-8"
+      name: "BES Cyber System Categorization — Control Center Expansion"
+      nerc_project: "2021-03"
+      mandatory_compliance_date: "2028-07-01"
+      key_changes:
+        - "Expands Control Center definition to include Transmission Owners with real-time SCADA control at 2+ locations"
+        - "Introduces Aggregated Weighted Value (AWV) threshold of 6,000 for medium-impact classification"
+
+    - id: "CIP-013"
+      version: "CIP-013-4"
+      name: "Supply Chain Risk Management — FERC Order 912"
+      nerc_project: "2025-06"
+      status: "Draft 1 comment period closed July 2026; drafting est. complete May 2027"
+      mandatory_compliance_date: "TBD"
+      key_changes:
+        - "Expands applicability to EACMS, PACS, PCAs, and Shared Cyber Infrastructure"
+        - "Defined reassessment timelines: 24 months for high impact, 36 months for medium impact"
+        - "Covers spare equipment and emergency repairs"
+
+    - id: "CIP-010"
+      version: "CIP-010-6"
+      name: "Configuration Change Management — FERC Order 912"
+      nerc_project: "2025-06"
+      status: "Draft 1 comment period closed July 2026"
+      mandatory_compliance_date: "TBD"
+      key_changes:
+        - "Configuration management updates tied to supply chain expansion"
+        - "Companion standard to CIP-013-4"
+
+  # ═══════════════════════════════════════════════════════════════
+  # EMERGING — Cloud Services (Project 2023-09)
+  # Very early development; informal comment period July-Aug 2026
+  # ═══════════════════════════════════════════════════════════════
+  emerging_standards:
+    cloud_services:
+      nerc_project: "2023-09"
+      description: "Risk Management for Third-Party Cloud Services"
+      status: "Informal comment period July 8 — August 21, 2026"
+      earliest_effective: "Later of 2029-01-01 or 6 months after approval"
+      key_concept: "Shifts foundation from individual 'Cyber Assets' to 'BES Cyber Services and Systems' (BCSS)"
+      drafted_standards:
+        - id: "CIP-102"
+          version: "CIP-102-1"
+          name: "BCSS Identification (cloud-based system categorization)"
+        - id: "CIP-103"
+          version: "CIP-103-1"
+          name: "Security Management Controls for Cloud"
+        - id: "CIP-105"
+          version: "CIP-105-1"
+          name: "System Protection (replaces ESP with Cyber Security Zones and Conduits)"
+        - id: "CIP-113"
+          version: "CIP-113-1"
+          name: "Supply Chain Risk Management for Cloud (data sovereignty, concentration risk)"
+      anticipated_additional:
+        - "CIP-104, CIP-106, CIP-108, CIP-109, CIP-110, CIP-111, CIP-112, CIP-115"
+
+  # Combined flat list for IQ tracking (all currently enforced standards)
+  categories:
+    - id: "CIP-002"
+      name: "BES Cyber System Categorization"
+      version: "CIP-002-5.1a"
+      subcategories: ["R1", "R2"]
+    - id: "CIP-003"
+      name: "Security Management Controls"
+      version: "CIP-003-9"
+      subcategories: ["R1", "R2", "R3", "R4"]
+    - id: "CIP-004"
+      name: "Personnel & Training"
+      version: "CIP-004-7"
+      subcategories: ["R1", "R2", "R3", "R4", "R5", "R6"]
+    - id: "CIP-005"
+      name: "Electronic Security Perimeter(s)"
+      version: "CIP-005-7"
+      subcategories: ["R1", "R2", "R3"]
+    - id: "CIP-006"
+      name: "Physical Security of BES Cyber Systems"
+      version: "CIP-006-6"
+      subcategories: ["R1", "R2", "R3"]
+    - id: "CIP-007"
+      name: "System Security Management"
+      version: "CIP-007-6"
+      subcategories: ["R1", "R2", "R3", "R4", "R5"]
+    - id: "CIP-008"
+      name: "Incident Reporting and Response Planning"
+      version: "CIP-008-6"
+      subcategories: ["R1", "R2", "R3"]
+    - id: "CIP-009"
+      name: "Recovery Plans for BES Cyber Systems"
+      version: "CIP-009-6"
+      subcategories: ["R1", "R2", "R3"]
+    - id: "CIP-010"
+      name: "Configuration Change Management and Vulnerability Assessments"
+      version: "CIP-010-4"
+      subcategories: ["R1", "R2", "R3", "R4"]
+    - id: "CIP-011"
+      name: "Information Protection"
+      version: "CIP-011-3"
+      subcategories: ["R1", "R2"]
+    - id: "CIP-012"
+      name: "Communications Between Control Centers"
+      version: "CIP-012-2"
+      subcategories: ["R1"]
+    - id: "CIP-013"
+      name: "Supply Chain Risk Management"
+      version: "CIP-013-2"
+      subcategories: ["R1", "R2", "R3"]
+    - id: "CIP-014"
+      name: "Physical Security (Transmission Stations/Substations)"
+      version: "CIP-014-3"
+      subcategories: ["R1", "R2", "R3", "R4", "R5", "R6"]
+    - id: "CIP-015"
+      name: "Internal Network Security Monitoring (INSM)"
+      version: "CIP-015-1"
+      subcategories: ["R1", "R2", "R3"]
+
+  nerc_projects:
+    - project: "2016-02"
+      name: "Virtualization"
+      ferc_order: "919"
+      status: "Approved — mandatory compliance July 1, 2028"
+    - project: "2023-04"
+      name: "Low-Impact Controls (CIP-003-11)"
+      ferc_order: "918"
+      status: "Approved — mandatory compliance July 1, 2029"
+    - project: "2025-02"
+      name: "Expanded INSM (CIP-015-2)"
+      status: "NERC Board adopted June 17, 2026; FERC approval pending"
+    - project: "2021-03"
+      name: "Control Center Definition Expansion (CIP-002-8)"
+      status: "Tied to CIP-002-7 effective date (July 1, 2028)"
+    - project: "2022-05"
+      name: "Incident Reporting Modifications (CIP-008-8)"
+      status: "In development pipeline"
+    - project: "2023-06"
+      name: "CIP-014 Risk Assessment Refinement"
+      status: "In development pipeline"
+    - project: "2025-06"
+      name: "Supply Chain / FERC Order 912 (CIP-010-6, CIP-013-4)"
+      ferc_order: "912"
+      status: "Draft 1 comment period closed July 2026"
+    - project: "2023-09"
+      name: "Cloud Services (CIP 100-Series)"
+      status: "Informal comment period July-August 2026"
+
+assessment:
+  iq_scale:
+    min: 0
+    max: 100
+    levels:
+      - range: [0, 25]
+        label: "Foundational"
+        description: "Awareness-level; knows standards exist but limited application knowledge"
+      - range: [26, 50]
+        label: "Developing"
+        description: "Can identify requirements but struggles with cross-standard relationships"
+      - range: [51, 75]
+        label: "Proficient"
+        description: "Solid understanding; can apply standards to real scenarios"
+      - range: [76, 100]
+        label: "Expert"
+        description: "Deep cross-standard knowledge; identifies edge cases and VSL implications"
+  baseline_questions_per_standard: 3
+  reassessment_interval_conversations: 10
+
+severity_framework:
+  name: "Violation Severity Levels (VSLs)"
+  levels:
+    - id: "Lower"
+      description: "Minor deviation; limited risk to BES reliability"
+    - id: "Moderate"
+      description: "Meaningful gap; could affect reliability under certain conditions"
+    - id: "High"
+      description: "Significant deficiency; probable reliability impact"
+    - id: "Severe"
+      description: "Critical failure; direct threat to BES reliability"
+
+customer_program:
+  document_types:
+    - type: "policy"
+      label: "Policy"
+      description: "High-level organizational commitment to CIP compliance"
+    - type: "program"
+      label: "Program"
+      description: "Structured approach to implementing CIP requirements"
+    - type: "procedure"
+      label: "Procedure"
+      description: "Step-by-step operational processes"
+    - type: "instruction"
+      label: "Work Instruction"
+      description: "Detailed task-level guidance"
+    - type: "evidence"
+      label: "Evidence"
+      description: "Artifacts demonstrating compliance (logs, screenshots, attestations)"
