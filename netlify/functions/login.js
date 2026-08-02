@@ -1,18 +1,55 @@
-// Rate-limited Supabase login proxy
+// Rate-limited Supabase login proxy — uses raw fetch (no SDK, avoids WebSocket issues)
 // Enforces attempt limits, lockout, and email alerts before credentials reach Supabase.
 
-const { createClient } = require("@supabase/supabase-js");
+const crypto = require("crypto");
+
+const SUPABASE_URL     = process.env.SUPABASE_URL;
+const SERVICE_KEY      = process.env.SUPABASE_SERVICE_KEY;
+const ANON_KEY         = process.env.SUPABASE_ANON_KEY;
 
 const MAX_ATTEMPTS       = 3;
 const LOCKOUT_MINUTES    = 30;
 const WINDOW_MINUTES     = 2;
 const MULTI_IP_THRESHOLD = 3;
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+// ── Supabase REST helpers ──────────────────────────────────────────────────────
+function sbRest(path, opts = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+    ...opts,
+    headers: {
+      "Content-Type":  "application/json",
+      "apikey":        SERVICE_KEY,
+      "Authorization": `Bearer ${SERVICE_KEY}`,
+      "Prefer":        "return=representation",
+      ...(opts.headers ?? {}),
+    },
+  });
+}
 
+async function getRateRecord(ip) {
+  const res  = await sbRest(`/auth_rate_limits?ip=eq.${encodeURIComponent(ip)}&select=*`);
+  const rows = await res.json();
+  return rows?.[0] ?? null;
+}
+
+async function upsertRateRecord(ip, fields) {
+  const exists = await getRateRecord(ip);
+  if (exists) {
+    await sbRest(`/auth_rate_limits?ip=eq.${encodeURIComponent(ip)}`, {
+      method: "PATCH", body: JSON.stringify(fields),
+    });
+  } else {
+    await sbRest("/auth_rate_limits", {
+      method: "POST", body: JSON.stringify({ ip, ...fields }),
+    });
+  }
+}
+
+async function deleteRateRecord(ip) {
+  await sbRest(`/auth_rate_limits?ip=eq.${encodeURIComponent(ip)}`, { method: "DELETE" });
+}
+
+// ── Email alert ───────────────────────────────────────────────────────────────
 async function sendAlert(subject, body) {
   const apiKey = process.env.RESEND_API_KEY;
   const to     = process.env.CIPGUARD_ALERT_EMAIL;
@@ -21,14 +58,39 @@ async function sendAlert(subject, body) {
     method:  "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
     body: JSON.stringify({
-      from:    "CIPGuard Security <onboarding@resend.dev>",
-      to:      [to],
-      subject,
-      text:    body,
+      from: "CIPGuard Security <onboarding@resend.dev>",
+      to:   [to], subject, text: body,
     }),
   });
 }
 
+// ── Supabase auth sign-in via REST ────────────────────────────────────────────
+async function supabaseSignIn(email, password, captchaToken) {
+  const body = { email, password };
+  if (captchaToken) body.gotrue_meta_security = { captcha_token: captchaToken };
+
+  const res  = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method:  "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey":       ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) return { session: null, error: data };
+  // Shape into a Supabase-compatible session object
+  const session = {
+    access_token:  data.access_token,
+    refresh_token: data.refresh_token,
+    expires_in:    data.expires_in,
+    token_type:    data.token_type,
+    user:          data.user,
+  };
+  return { session, error: null };
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method not allowed" };
@@ -43,24 +105,18 @@ exports.handler = async (event) => {
 
   const { email, password, captchaToken } = body;
 
-  // ── Check existing lockout ──────────────────────────────────────────────
-  const { data: recs } = await supabase
-    .from("auth_rate_limits")
-    .select("*")
-    .eq("ip", ip)
-    .limit(1);
-
-  const rec = recs?.[0] ?? null;
+  // ── Check lockout ───────────────────────────────────────────────────────
+  const rec = await getRateRecord(ip);
 
   if (rec?.locked_until && new Date(rec.locked_until) > new Date()) {
-    // Allow unlock via secondary secret
-    const { data: hashData } = await supabase.rpc("sha256_hex", { input: password }).single().catch(() => ({ data: null }));
-    const unlockHash = process.env.CIPGUARD_UNLOCK_HASH ?? "";
-    const incomingHash = require("crypto").createHash("sha256").update(password).digest("hex");
+    // Allow super admin unlock with secondary secret
+    const incomingHash = crypto.createHash("sha256").update(password).digest("hex");
+    const unlockHash   = process.env.CIPGUARD_UNLOCK_HASH ?? "";
+    const adminUser    = process.env.CIPGUARD_USER ?? "";
 
-    if (email === process.env.CIPGUARD_USER && incomingHash === unlockHash) {
-      await supabase.from("auth_rate_limits").delete().eq("ip", ip);
-      // Fall through to normal sign-in below
+    if (email === adminUser && incomingHash === unlockHash) {
+      await deleteRateRecord(ip);
+      // Fall through to sign-in below
     } else {
       const remaining = Math.ceil((new Date(rec.locked_until) - Date.now()) / 60000);
       return {
@@ -71,20 +127,15 @@ exports.handler = async (event) => {
     }
   }
 
-  // ── Attempt Supabase sign-in ────────────────────────────────────────────
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-    options: captchaToken ? { captchaToken } : undefined,
-  });
+  // ── Attempt sign-in ─────────────────────────────────────────────────────
+  const { session, error: authError } = await supabaseSignIn(email, password, captchaToken);
 
-  if (!authError) {
-    // Success — clear any failure record
-    if (rec) await supabase.from("auth_rate_limits").delete().eq("ip", ip);
+  if (session) {
+    if (rec) await deleteRateRecord(ip);
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session: authData.session }),
+      body: JSON.stringify({ session }),
     };
   }
 
@@ -94,34 +145,25 @@ exports.handler = async (event) => {
     ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
     : null;
 
-  if (rec) {
-    await supabase.from("auth_rate_limits")
-      .update({ fail_count: count, last_fail: now, locked_until: lockedUntil })
-      .eq("ip", ip);
-  } else {
-    await supabase.from("auth_rate_limits")
-      .insert({ ip, fail_count: count, first_fail: now, last_fail: now, locked_until: lockedUntil });
-  }
+  await upsertRateRecord(ip, { fail_count: count, last_fail: now, locked_until: lockedUntil,
+    ...(rec ? {} : { first_fail: now }) });
 
-  // ── Lockout alert ───────────────────────────────────────────────────────
   if (count >= MAX_ATTEMPTS) {
     await sendAlert(
       `🔒 CIPGuard: IP ${ip} locked out after ${MAX_ATTEMPTS} failed attempts`,
-      `IP ${ip} has been locked out of cipguard.netlify.app.\n\nFailed attempts : ${count}\nLocked until    : ${lockedUntil}\n\nReview Netlify logs if unexpected.`
+      `IP ${ip} locked out of cipguard.netlify.app.\n\nAttempts: ${count}\nLocked until: ${lockedUntil}`
     );
   }
 
-  // ── Multi-IP coordinated detection ─────────────────────────────────────
+  // ── Multi-IP detection ──────────────────────────────────────────────────
   const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString();
-  const { data: recentIPs } = await supabase
-    .from("auth_rate_limits")
-    .select("ip, fail_count")
-    .gte("last_fail", windowStart);
+  const multiRes    = await sbRest(`/auth_rate_limits?last_fail=gte.${windowStart}&select=ip,fail_count`);
+  const recentIPs   = await multiRes.json();
 
-  if (recentIPs?.length >= MULTI_IP_THRESHOLD) {
+  if (Array.isArray(recentIPs) && recentIPs.length >= MULTI_IP_THRESHOLD) {
     await sendAlert(
-      `🚨 CIPGuard: Coordinated login attack — ${recentIPs.length} distinct IPs`,
-      `Multiple IPs failing authentication within ${WINDOW_MINUTES} minutes.\n\n${recentIPs.map(r => `  ${r.ip}  (${r.fail_count} attempts)`).join("\n")}\n\nConsider enabling IP blocking in your Netlify dashboard.`
+      `🚨 CIPGuard: Coordinated attack — ${recentIPs.length} distinct IPs`,
+      `Multiple IPs failing within ${WINDOW_MINUTES} min:\n${recentIPs.map(r => `  ${r.ip} (${r.fail_count} attempts)`).join("\n")}`
     );
   }
 
