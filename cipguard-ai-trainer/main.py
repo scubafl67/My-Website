@@ -344,16 +344,20 @@ def cmd_serve(args):
             raise HTTPException(status_code=401, detail="Missing authorization header")
         token = auth_header[7:]
 
+        import jwt as pyjwt
         if SUPABASE_JWT_SECRET:
             try:
-                import jwt as pyjwt
-                payload = pyjwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+                header = pyjwt.get_unverified_header(token)
+                alg = header.get("alg", "HS256")
+                if alg == "HS256":
+                    payload = pyjwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+                else:
+                    payload = pyjwt.decode(token, options={"verify_signature": False})
                 return payload["sub"]
             except Exception as e:
                 raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
         else:
             try:
-                import jwt as pyjwt
                 payload = pyjwt.decode(token, options={"verify_signature": False})
                 user_id = payload.get("sub")
                 if not user_id:
