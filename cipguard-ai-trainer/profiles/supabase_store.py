@@ -27,7 +27,7 @@ class SupabaseTeammateStore:
             .maybe_single()
             .execute()
         )
-        if row.data:
+        if row and row.data:
             return self._to_dict(row.data)
 
         new_profile = {
@@ -55,7 +55,7 @@ class SupabaseTeammateStore:
             .maybe_single()
             .execute()
         )
-        if not row.data:
+        if not row or not row.data:
             return {}
         return self._to_dict(row.data)
 
@@ -106,7 +106,7 @@ class SupabaseTeammateStore:
             .maybe_single()
             .execute()
         )
-        if row.data and row.data.get("full_name"):
+        if row and row.data and row.data.get("full_name"):
             return row.data["full_name"]
         return teammate_id
 
